@@ -7,6 +7,7 @@ from modules.calculator import ForceMainCalculator
 from modules.network import ForceMainNetwork
 from modules.visualizer import HydraulicVisualizer
 from modules.swmm_writer import SWMMInputGenerator
+from modules.epanet_writer import EPANETInputGenerator
 from modules.validator import TroubleshootingAssistant
 import io
 import os
@@ -33,6 +34,7 @@ def main():
             "Network Analyzer",
             "SWMM Input Generator",
             "Results Visualizer",
+            "EPANET vs SWMM5 Comparison",
             "Troubleshooting Assistant"
         ]
     )
@@ -47,6 +49,8 @@ def main():
         swmm_input_generator()
     elif page == "Results Visualizer":
         results_visualizer()
+    elif page == "EPANET vs SWMM5 Comparison":
+        epanet_swmm_comparison()
     elif page == "Troubleshooting Assistant":
         troubleshooting_assistant()
 
@@ -336,10 +340,11 @@ def network_analyzer():
                     st.write(f"- {link['id']}: {flow_fraction*100:.1f}% of total flow")
 
 def swmm_input_generator():
-    st.header("📝 SWMM Input Generator")
-    st.markdown("Generate properly formatted SWMM5 input files for force main systems")
+    st.header("📝 SWMM & EPANET Input Generator")
+    st.markdown("Generate properly formatted SWMM5 and EPANET input files for force main systems")
     
     generator = SWMMInputGenerator()
+    epanet_generator = EPANETInputGenerator()
     
     col1, col2 = st.columns(2)
     
@@ -410,9 +415,12 @@ def swmm_input_generator():
                     head = st.number_input(f"Head {i+1} (m)", value=50.0-5*i, key=f"head_{i}")
                 pump_points.append((flow, head))
         
-        st.subheader("Generate SWMM Input File")
+        st.subheader("Generate Input Files")
         
-        if st.button("Generate Input File"):
+        # Model format selection
+        export_format = st.selectbox("Export Format", ["SWMM5 Only", "EPANET Only", "Both SWMM5 & EPANET"])
+        
+        if st.button("Generate Input Files"):
             # Create configuration dictionary
             config = {
                 'project_title': project_title,
@@ -449,20 +457,67 @@ def swmm_input_generator():
                 }
             }
             
-            # Generate SWMM input content
-            inp_content = generator.create_force_main_system(config)
+            # Convert SWMM config to EPANET format
+            epanet_config = {
+                'project_title': project_title,
+                'wet_well': {
+                    'id': ww_id,
+                    'elevation': ww_invert,
+                    'demand': -0.1  # Negative for supply source
+                },
+                'pump': {
+                    'id': pump_id,
+                    'from': ww_id,
+                    'to': fm_id + "_start",
+                    'curve_data': pump_points
+                },
+                'force_main': {
+                    'id': fm_id,
+                    'from': fm_id + "_start",
+                    'to': dn_id,
+                    'diameter': fm_diameter,
+                    'length': fm_length,
+                    'roughness': 120 if fm_roughness < 1 else fm_roughness  # Convert to C value if needed
+                },
+                'discharge_node': {
+                    'id': dn_id,
+                    'elevation': dn_elevation,
+                    'demand': 0.1  # Positive demand at discharge
+                }
+            }
             
-            # Display in expandable section
-            with st.expander("View Generated SWMM Input File", expanded=True):
-                st.code(inp_content, language='text')
+            # Generate files based on selection
+            if export_format in ["SWMM5 Only", "Both SWMM5 & EPANET"]:
+                swmm_content = generator.create_force_main_system(config)
+                
+                with st.expander("View Generated SWMM5 Input File", expanded=(export_format == "SWMM5 Only")):
+                    st.code(swmm_content, language='text')
+                
+                st.download_button(
+                    label="Download SWMM5 .inp File",
+                    data=swmm_content,
+                    file_name=f"{project_title.replace(' ', '_').lower()}_swmm.inp",
+                    mime="text/plain",
+                    key="swmm_download"
+                )
             
-            # Download button
-            st.download_button(
-                label="Download .inp File",
-                data=inp_content,
-                file_name=f"{project_title.replace(' ', '_').lower()}.inp",
-                mime="text/plain"
-            )
+            if export_format in ["EPANET Only", "Both SWMM5 & EPANET"]:
+                epanet_content = epanet_generator.create_force_main_system(epanet_config)
+                
+                with st.expander("View Generated EPANET Input File", expanded=(export_format == "EPANET Only")):
+                    st.code(epanet_content, language='text')
+                
+                st.download_button(
+                    label="Download EPANET .inp File",
+                    data=epanet_content,
+                    file_name=f"{project_title.replace(' ', '_').lower()}_epanet.inp",
+                    mime="text/plain",
+                    key="epanet_download"
+                )
+            
+            # Comparison summary
+            if export_format == "Both SWMM5 & EPANET":
+                st.info("💡 **Tip**: Both files have been generated. Use the 'EPANET vs SWMM5 Comparison' tool to see detailed differences between the two modeling approaches.")
 
 def results_visualizer():
     st.header("📈 Results Visualizer")
@@ -618,6 +673,359 @@ def results_visualizer():
             st.metric("Peak Flow", f"{np.max(flow_pattern):.3f} m³/s")
             st.metric("Minimum Velocity", f"{np.min(velocities):.2f} m/s")
             st.metric("Maximum Velocity", f"{np.max(velocities):.2f} m/s")
+
+def epanet_swmm_comparison():
+    st.header("⚖️ EPANET vs SWMM5 Comparison")
+    st.markdown("Compare force main modeling approaches between EPANET and SWMM5")
+    
+    # Comparison overview
+    st.subheader("Modeling Approach Comparison")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 🔧 EPANET")
+        st.markdown("""
+        **Strengths:**
+        - ✅ Dedicated water distribution system modeling
+        - ✅ Advanced hydraulic analysis capabilities
+        - ✅ Excellent pump modeling and optimization
+        - ✅ Mature, well-established software
+        - ✅ Faster computation for steady-state analysis
+        - ✅ Superior pressure network analysis
+        - ✅ Built-in optimization routines
+        
+        **Limitations:**
+        - ❌ Steady-state analysis only
+        - ❌ No unsteady flow capability
+        - ❌ Limited wet well modeling
+        - ❌ No surface runoff integration
+        - ❌ No quality routing in sewers
+        - ❌ Less suitable for combined systems
+        """)
+    
+    with col2:
+        st.markdown("### 🌊 SWMM5")
+        st.markdown("""
+        **Strengths:**
+        - ✅ Dynamic/unsteady flow analysis
+        - ✅ Integrated stormwater modeling
+        - ✅ Advanced wet well and storage modeling
+        - ✅ Combined sewer system capability
+        - ✅ Water quality modeling
+        - ✅ Real-time control simulation
+        - ✅ Surface runoff integration
+        
+        **Limitations:**
+        - ❌ More complex setup for simple systems
+        - ❌ Longer computation times
+        - ❌ Less optimized for pure pressure systems
+        - ❌ Steeper learning curve
+        - ❌ Can be overkill for simple force mains
+        - ❌ Convergence issues with pressure systems
+        """)
+    
+    # Feature comparison table
+    st.subheader("Feature Comparison Matrix")
+    
+    comparison_data = {
+        'Feature': [
+            'Steady-State Analysis',
+            'Dynamic Flow Analysis', 
+            'Pump Modeling',
+            'Force Main Analysis',
+            'Wet Well Modeling',
+            'Pressure Analysis',
+            'Water Quality',
+            'Real-Time Controls',
+            'Network Optimization',
+            'Computation Speed',
+            'Learning Curve',
+            'Industry Adoption'
+        ],
+        'EPANET': [
+            '⭐⭐⭐⭐⭐',
+            '❌',
+            '⭐⭐⭐⭐⭐', 
+            '⭐⭐⭐⭐',
+            '⭐⭐',
+            '⭐⭐⭐⭐⭐',
+            '⭐⭐⭐',
+            '⭐⭐',
+            '⭐⭐⭐⭐⭐',
+            '⭐⭐⭐⭐⭐',
+            '⭐⭐⭐⭐',
+            '⭐⭐⭐⭐⭐'
+        ],
+        'SWMM5': [
+            '⭐⭐⭐',
+            '⭐⭐⭐⭐⭐',
+            '⭐⭐⭐',
+            '⭐⭐⭐⭐⭐',
+            '⭐⭐⭐⭐⭐',
+            '⭐⭐⭐',
+            '⭐⭐⭐⭐⭐',
+            '⭐⭐⭐⭐⭐',
+            '⭐⭐',
+            '⭐⭐⭐',
+            '⭐⭐',
+            '⭐⭐⭐⭐'
+        ],
+        'Best Use Case': [
+            'EPANET - More mature algorithms',
+            'SWMM5 - Only option available',
+            'EPANET - Advanced pump analysis',
+            'Both - Depends on complexity',
+            'SWMM5 - Superior storage modeling',
+            'EPANET - Purpose-built for pressure',
+            'SWMM5 - Comprehensive quality routing',
+            'SWMM5 - Built-in control logic',
+            'EPANET - Built-in optimization',
+            'EPANET - Faster steady-state',
+            'EPANET - Simpler setup',
+            'Both - Widely adopted'
+        ]
+    }
+    
+    comparison_df = pd.DataFrame(comparison_data)
+    st.dataframe(comparison_df, use_container_width=True)
+    
+    # When to use which software
+    st.subheader("Decision Matrix: Which Software to Choose?")
+    
+    # Interactive decision tool
+    st.markdown("### 🤔 Help Me Choose")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Project Requirements:**")
+        
+        analysis_type = st.selectbox(
+            "Primary Analysis Type",
+            ["Steady-state hydraulics", "Dynamic/unsteady flow", "Both required"]
+        )
+        
+        system_complexity = st.selectbox(
+            "System Complexity",
+            ["Simple force main", "Multiple pumps/branches", "Complex network", "Integrated system"]
+        )
+        
+        time_dependency = st.selectbox(
+            "Time-Dependent Analysis Needed?",
+            ["No - steady conditions", "Yes - varying demands", "Yes - pump cycling", "Yes - real-time control"]
+        )
+        
+        quality_modeling = st.selectbox(
+            "Water Quality Modeling",
+            ["Not required", "Basic quality tracking", "Advanced quality analysis", "Sewer-specific quality"]
+        )
+        
+        integration_needs = st.selectbox(
+            "Integration with Other Systems",
+            ["Standalone force main", "Part of water system", "Part of sewer system", "Combined stormwater system"]
+        )
+    
+    with col2:
+        st.write("**Recommendation:**")
+        
+        # Decision logic
+        epanet_score = 0
+        swmm_score = 0
+        
+        # Analysis type scoring
+        if analysis_type == "Steady-state hydraulics":
+            epanet_score += 3
+        elif analysis_type == "Dynamic/unsteady flow":
+            swmm_score += 3
+        else:
+            epanet_score += 1
+            swmm_score += 2
+        
+        # System complexity scoring
+        if system_complexity == "Simple force main":
+            epanet_score += 2
+        elif system_complexity in ["Multiple pumps/branches", "Complex network"]:
+            epanet_score += 3
+        else:
+            swmm_score += 2
+        
+        # Time dependency scoring
+        if time_dependency == "No - steady conditions":
+            epanet_score += 3
+        else:
+            swmm_score += 3
+        
+        # Quality modeling scoring
+        if quality_modeling == "Not required":
+            epanet_score += 1
+        elif quality_modeling in ["Advanced quality analysis", "Sewer-specific quality"]:
+            swmm_score += 3
+        else:
+            epanet_score += 1
+            swmm_score += 1
+        
+        # Integration scoring
+        if integration_needs in ["Part of water system", "Standalone force main"]:
+            epanet_score += 2
+        else:
+            swmm_score += 3
+        
+        # Display recommendation
+        if epanet_score > swmm_score:
+            st.success("🎯 **EPANET Recommended**")
+            st.write(f"Score: EPANET {epanet_score} vs SWMM5 {swmm_score}")
+            st.write("**Reasoning:**")
+            if analysis_type == "Steady-state hydraulics":
+                st.write("- EPANET excels at steady-state analysis")
+            if system_complexity in ["Simple force main", "Multiple pumps/branches"]:
+                st.write("- Better suited for pressure network analysis")
+            if time_dependency == "No - steady conditions":
+                st.write("- No need for dynamic capabilities")
+            if integration_needs == "Part of water system":
+                st.write("- Natural fit for water distribution systems")
+            
+        elif swmm_score > epanet_score:
+            st.success("🎯 **SWMM5 Recommended**")
+            st.write(f"Score: SWMM5 {swmm_score} vs EPANET {epanet_score}")
+            st.write("**Reasoning:**")
+            if analysis_type in ["Dynamic/unsteady flow", "Both required"]:
+                st.write("- Dynamic analysis capabilities required")
+            if time_dependency != "No - steady conditions":
+                st.write("- Time-dependent analysis needed")
+            if quality_modeling in ["Advanced quality analysis", "Sewer-specific quality"]:
+                st.write("- Superior water quality modeling")
+            if integration_needs in ["Part of sewer system", "Combined stormwater system"]:
+                st.write("- Better integration with sewer/stormwater systems")
+            
+        else:
+            st.info("🤷 **Either Software Suitable**")
+            st.write(f"Score: EPANET {epanet_score} vs SWMM5 {swmm_score}")
+            st.write("Both software packages would work well for your application.")
+            st.write("Consider factors like:")
+            st.write("- Existing software expertise")
+            st.write("- Future project requirements")
+            st.write("- Integration with existing models")
+    
+    # Model conversion guidance
+    st.subheader("Model Conversion Guidance")
+    
+    with st.expander("Converting SWMM5 to EPANET", expanded=False):
+        st.markdown("""
+        **Key Conversion Steps:**
+        
+        1. **Nodes:**
+           - Wet wells → Tanks or Reservoirs
+           - Junctions → Junctions
+           - Outfalls → Reservoirs
+        
+        2. **Links:**
+           - Force mains → Pipes
+           - Pumps → Pumps (convert curves)
+           - Controls → Rules/Controls
+        
+        3. **Units:**
+           - SWMM uses m³/s → EPANET uses L/s
+           - Convert roughness: Manning's n → Hazen-Williams C
+        
+        4. **Time Settings:**
+           - SWMM dynamic → EPANET steady-state
+           - Use peak hour conditions
+        
+        **Conversion Formula Examples:**
+        ```
+        EPANET Flow (L/s) = SWMM Flow (m³/s) × 1000
+        H-W C ≈ 120 (for typical force mains)
+        Pipe Diameter (mm) = SWMM Diameter (m) × 1000
+        ```
+        """)
+    
+    with st.expander("Converting EPANET to SWMM5", expanded=False):
+        st.markdown("""
+        **Key Conversion Steps:**
+        
+        1. **Nodes:**
+           - Tanks → Storage nodes
+           - Junctions → Junctions
+           - Reservoirs → Outfalls
+        
+        2. **Links:**
+           - Pipes → Conduits (use FORCE_MAIN cross-section)
+           - Pumps → Pumps (convert curves and controls)
+        
+        3. **Units:**
+           - EPANET L/s → SWMM m³/s
+           - Hazen-Williams C → Manning's n (if needed)
+        
+        4. **Time Settings:**
+           - Add dynamic time settings
+           - Define pump controls
+           - Set up reporting intervals
+        
+        **Conversion Formula Examples:**
+        ```
+        SWMM Flow (m³/s) = EPANET Flow (L/s) ÷ 1000
+        Manning's n ≈ 0.012-0.015 (for force mains)
+        SWMM Diameter (m) = EPANET Diameter (mm) ÷ 1000
+        ```
+        """)
+    
+    # Practical comparison example
+    st.subheader("Practical Example: Same System, Both Software")
+    
+    if st.button("Generate Comparison Example"):
+        st.write("**Example System:**")
+        st.write("- Wet well: 4m deep, 50 m² area")
+        st.write("- Pump: 0.15 m³/s at 45m head")
+        st.write("- Force main: 300mm diameter, 1000m length")
+        st.write("- Discharge: 10m higher than wet well")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**SWMM5 Model Highlights:**")
+            st.code("""
+[STORAGE]
+WW1  95.0  4.0  1.0  FUNCTIONAL  50.0
+
+[PUMPS] 
+P1   WW1  J1  PC1  ON  2.0  0.5
+
+[CONDUITS]
+FM1  J1  OUT1  1000  0.013  0  0
+
+[XSECTIONS]
+FM1  FORCE_MAIN  0.300  0  0  0  1
+
+[CONTROLS]
+RULE R1
+IF NODE WW1 DEPTH > 2.0
+THEN PUMP P1 STATUS = ON
+            """)
+        
+        with col2:
+            st.write("**EPANET Model Highlights:**")
+            st.code("""
+[TANKS]
+WW1  95.0  1.0  0.1  4.0  8.0  0
+
+[PUMPS]
+P1   WW1  J1   HEAD  PC1
+
+[PIPES]
+FM1  J1  OUT1  1000  300  120  0  Open
+
+[CURVES]
+PC1  0.000  45.0
+PC1  0.150  40.0
+PC1  0.300  30.0
+
+[CONTROLS]
+LINK P1 1.0 IF NODE WW1 ABOVE 97.0
+LINK P1 0.0 IF NODE WW1 BELOW 95.5
+            """)
+        
+        st.info("💡 **Key Differences:** SWMM5 uses dynamic simulation with detailed wet well modeling, while EPANET uses steady-state with simplified tank representation.")
 
 def troubleshooting_assistant():
     st.header("🔍 Troubleshooting Assistant")
