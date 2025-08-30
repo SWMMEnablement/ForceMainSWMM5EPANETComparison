@@ -33,6 +33,7 @@ def main():
             "Friction Loss Calculator", 
             "Network Analyzer",
             "SWMM Input Generator",
+            "EPANET Input Generator",
             "Results Visualizer",
             "EPANET vs SWMM5 Comparison",
             "Troubleshooting Assistant"
@@ -47,6 +48,8 @@ def main():
         network_analyzer()
     elif page == "SWMM Input Generator":
         swmm_input_generator()
+    elif page == "EPANET Input Generator":
+        epanet_input_generator()
     elif page == "Results Visualizer":
         results_visualizer()
     elif page == "EPANET vs SWMM5 Comparison":
@@ -610,6 +613,221 @@ def swmm_input_generator():
             # Comparison summary
             if export_format == "Both SWMM5 & EPANET":
                 st.info("💡 **Tip**: Both files have been generated. Use the 'EPANET vs SWMM5 Comparison' tool to see detailed differences between the two modeling approaches.")
+
+def epanet_input_generator():
+    st.header("🔧 EPANET Input Generator")
+    st.markdown("Generate EPANET input files optimized for force main systems")
+    
+    epanet_generator = EPANETInputGenerator()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Project Configuration")
+        
+        # Project information
+        project_title = st.text_input("Project Title", value="Force Main EPANET Model")
+        flow_units = st.selectbox("Flow Units", ["LPS", "LPM", "CMS", "GPM", "MGD", "CFS"], index=0)
+        time_pattern = st.selectbox("Demand Pattern", ["Constant", "Hourly", "Daily"], index=0)
+        
+        # Tank (Wet Well) configuration
+        st.subheader("Wet Well Tank")
+        tank_id = st.text_input("Tank ID", value="TANK1")
+        tank_elevation = st.number_input("Tank Base Elevation (m)", value=95.0)
+        tank_init_level = st.number_input("Initial Water Level (m)", value=2.0)
+        tank_min_level = st.number_input("Minimum Level (m)", value=0.5)
+        tank_max_level = st.number_input("Maximum Level (m)", value=4.0)
+        tank_diameter = st.number_input("Tank Diameter (m)", value=8.0)
+        
+        # Pump configuration
+        st.subheader("Pump Station")
+        pump_id = st.text_input("Pump ID", value="PUMP1")
+        pump_pattern = st.text_input("Pump Pattern ID", value="PATTERN1")
+        
+        # Pump curve points
+        st.write("**Pump Curve (Head vs Flow):**")
+        num_curve_points = st.selectbox("Number of Curve Points", [2, 3, 4, 5], index=2)
+        pump_curve_data = []
+        
+        for i in range(num_curve_points):
+            col_flow, col_head = st.columns(2)
+            with col_flow:
+                flow = st.number_input(f"Flow {i+1} (L/s)", value=100.0*(i+1), key=f"epa_flow_{i}")
+            with col_head:
+                head = st.number_input(f"Head {i+1} (m)", value=50.0-5*i, key=f"epa_head_{i}")
+            pump_curve_data.append((flow, head))
+        
+        # Force main configuration
+        st.subheader("Force Main Pipe")
+        pipe_id = st.text_input("Pipe ID", value="FORCEMAIN1")
+        pipe_diameter = st.number_input("Diameter (mm)", value=300.0)
+        pipe_length = st.number_input("Length (m)", value=1000.0)
+        pipe_roughness = st.number_input("Hazen-Williams C", value=120.0)
+        
+        # Junction configuration
+        junction_id = st.text_input("Discharge Junction ID", value="JUNCTION1")
+        junction_elevation = st.number_input("Discharge Elevation (m)", value=105.0)
+        junction_demand = st.number_input("Base Demand (L/s)", value=100.0)
+    
+    with col2:
+        st.subheader("Model Preview")
+        
+        # Create network diagram
+        fig = go.Figure()
+        
+        # Add tank
+        fig.add_trace(go.Scatter(
+            x=[0], y=[tank_elevation + tank_init_level],
+            mode='markers+text',
+            marker=dict(size=25, color='blue', symbol='square'),
+            text=[tank_id],
+            textposition="top center",
+            name='Tank',
+            showlegend=True
+        ))
+        
+        # Add junction
+        fig.add_trace(go.Scatter(
+            x=[2], y=[junction_elevation],
+            mode='markers+text',
+            marker=dict(size=20, color='green', symbol='circle'),
+            text=[junction_id],
+            textposition="top center",
+            name='Junction',
+            showlegend=True
+        ))
+        
+        # Add pump
+        fig.add_trace(go.Scatter(
+            x=[0, 1], y=[tank_elevation + tank_init_level, tank_elevation + tank_init_level],
+            mode='lines+markers',
+            line=dict(color='red', width=6, dash='dot'),
+            marker=dict(size=12, symbol='triangle-right', color='red'),
+            name='Pump',
+            showlegend=True
+        ))
+        
+        # Add force main
+        fig.add_trace(go.Scatter(
+            x=[1, 2], y=[tank_elevation + tank_init_level, junction_elevation],
+            mode='lines',
+            line=dict(color='navy', width=4),
+            name='Force Main',
+            showlegend=True
+        ))
+        
+        fig.update_layout(
+            title="EPANET Network Layout",
+            xaxis_title="Position",
+            yaxis_title="Elevation (m)",
+            showlegend=True,
+            height=300
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # System summary
+        st.write("**System Summary:**")
+        st.metric("Static Head", f"{junction_elevation - (tank_elevation + tank_init_level):.1f} m")
+        st.metric("Pipe Velocity", f"{(junction_demand/1000) / (np.pi * (pipe_diameter/1000)**2 / 4):.2f} m/s")
+        
+        # Calculate estimated friction loss
+        q_cms = junction_demand / 1000  # Convert L/s to m³/s
+        d_m = pipe_diameter / 1000  # Convert mm to m
+        c = pipe_roughness
+        hf = 10.67 * (q_cms**1.852) * (pipe_length) / (c**1.852 * d_m**4.87)
+        st.metric("Est. Friction Loss", f"{hf:.1f} m")
+        
+        # Pump requirements
+        total_head = abs(junction_elevation - (tank_elevation + tank_init_level)) + hf
+        st.metric("Required Pump Head", f"{total_head:.1f} m")
+        
+        # Generate file
+        st.subheader("Generate EPANET File")
+        
+        if st.button("Generate EPANET Input"):
+            # Create configuration
+            config = {
+                'project_title': project_title,
+                'flow_units': flow_units,
+                'tank': {
+                    'id': tank_id,
+                    'elevation': tank_elevation,
+                    'init_level': tank_init_level,
+                    'min_level': tank_min_level,
+                    'max_level': tank_max_level,
+                    'diameter': tank_diameter
+                },
+                'pump': {
+                    'id': pump_id,
+                    'from': tank_id,
+                    'to': junction_id,
+                    'pattern': pump_pattern,
+                    'curve_data': pump_curve_data
+                },
+                'pipe': {
+                    'id': pipe_id,
+                    'from': tank_id,
+                    'to': junction_id,
+                    'diameter': pipe_diameter,
+                    'length': pipe_length,
+                    'roughness': pipe_roughness
+                },
+                'junction': {
+                    'id': junction_id,
+                    'elevation': junction_elevation,
+                    'demand': junction_demand
+                },
+                'time_pattern': time_pattern
+            }
+            
+            # Generate EPANET file
+            epanet_content = epanet_generator.create_force_main_system(config)
+            
+            # Display file content
+            with st.expander("View Generated EPANET Input File", expanded=True):
+                st.code(epanet_content, language='text')
+            
+            # Download button
+            st.download_button(
+                label="Download EPANET .inp File",
+                data=epanet_content,
+                file_name=f"{project_title.replace(' ', '_').lower()}.inp",
+                mime="text/plain"
+            )
+            
+            st.success("✅ EPANET input file generated successfully!")
+            
+            # Tips and recommendations
+            st.subheader("EPANET Modeling Tips")
+            
+            with st.expander("Optimization Recommendations"):
+                st.markdown("""
+                **For Force Main Optimization:**
+                
+                1. **Pump Efficiency**: Use pump curves with multiple points for better accuracy
+                2. **Pipe Sizing**: Consider velocity between 0.6-2.0 m/s for force mains
+                3. **Control Logic**: Implement level-based pump controls for realistic operation
+                4. **Steady-State**: EPANET is ideal for steady-state analysis and optimization
+                
+                **Advanced Features:**
+                - Use PATTERNS for demand variation
+                - Apply CONTROLS for pump operation
+                - Leverage RULES for complex logic
+                - Utilize optimization tools for pipe sizing
+                """)
+            
+            with st.expander("Model Validation Checklist"):
+                st.markdown("""
+                **Before Running Analysis:**
+                
+                - ✅ Check pump curve covers operating range
+                - ✅ Verify pipe roughness values (C=120-140 for new pipes)
+                - ✅ Confirm tank levels allow proper operation
+                - ✅ Validate demand patterns are realistic
+                - ✅ Test model convergence with different time steps
+                - ✅ Compare results with hand calculations
+                """)
 
 def results_visualizer():
     st.header("📈 Results Visualizer")
