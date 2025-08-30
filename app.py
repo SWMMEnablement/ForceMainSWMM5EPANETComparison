@@ -247,6 +247,7 @@ def network_analyzer():
         # Number of nodes and links
         num_nodes = st.selectbox("Number of Nodes", [2, 3, 4, 5], index=1)
         num_links = st.selectbox("Number of Force Mains", [1, 2, 3, 4], index=0)
+        num_pumps = st.selectbox("Number of Pumps", [0, 1, 2, 3], index=1)
         
         st.subheader("Node Data")
         nodes_data = []
@@ -276,6 +277,23 @@ def network_analyzer():
                 "to": to_node,
                 "diameter": diameter,
                 "length": length
+            })
+        
+        st.subheader("Pump Data")
+        pumps_data = []
+        for i in range(num_pumps):
+            st.write(f"**Pump {i+1}:**")
+            from_node = st.selectbox(f"From Node", [f"N{j+1}" for j in range(num_nodes)], key=f"pump_from_{i}")
+            to_node = st.selectbox(f"To Node", [f"N{j+1}" for j in range(num_nodes) if f"N{j+1}" != from_node], key=f"pump_to_{i}")
+            pump_head = st.number_input(f"Design Head (m)", value=50.0, key=f"pump_head_{i}")
+            pump_flow = st.number_input(f"Design Flow (m³/s)", value=0.15, key=f"pump_flow_{i}")
+            
+            pumps_data.append({
+                "id": f"P{i+1}",
+                "from": from_node,
+                "to": to_node,
+                "head": pump_head,
+                "flow": pump_flow
             })
     
     with col2:
@@ -307,8 +325,40 @@ def network_analyzer():
                 mode='lines',
                 line=dict(color='green', width=3),
                 name='Force Main',
-                showlegend=False
+                showlegend=False,
+                hovertemplate=f"Force Main: {link['id']}<br>Diameter: {link['diameter']:.2f}m<br>Length: {link['length']:.0f}m<extra></extra>"
             ))
+        
+        # Add pumps
+        for pump in pumps_data:
+            from_idx = next(i for i, n in enumerate(nodes_data) if n["id"] == pump["from"])
+            to_idx = next(i for i, n in enumerate(nodes_data) if n["id"] == pump["to"])
+            
+            # Draw pump as a thicker red line with arrow markers
+            fig.add_trace(go.Scatter(
+                x=[from_idx, to_idx],
+                y=[nodes_data[from_idx]["elevation"], nodes_data[to_idx]["elevation"]],
+                mode='lines+markers',
+                line=dict(color='red', width=5),
+                marker=dict(size=8, symbol='arrow-right', color='red'),
+                name='Pump',
+                showlegend=False,
+                hovertemplate=f"Pump: {pump['id']}<br>Design Head: {pump['head']:.1f}m<br>Design Flow: {pump['flow']:.3f}m³/s<extra></extra>"
+            ))
+            
+            # Add pump label at midpoint
+            mid_x = (from_idx + to_idx) / 2
+            mid_y = (nodes_data[from_idx]["elevation"] + nodes_data[to_idx]["elevation"]) / 2
+            fig.add_annotation(
+                x=mid_x,
+                y=mid_y,
+                text=pump["id"],
+                showarrow=False,
+                bgcolor="white",
+                bordercolor="red",
+                borderwidth=1,
+                font=dict(size=10, color="red")
+            )
         
         fig.update_layout(
             title="Network Layout",
@@ -325,12 +375,38 @@ def network_analyzer():
         if st.button("Analyze Network"):
             # Simplified analysis
             total_length = sum(link["length"] for link in links_data)
-            avg_diameter = np.mean([link["diameter"] for link in links_data])
+            avg_diameter = np.mean([link["diameter"] for link in links_data]) if links_data else 0
             elevation_diff = max(node["elevation"] for node in nodes_data) - min(node["elevation"] for node in nodes_data)
             
-            st.metric("Total Force Main Length", f"{total_length:.0f} m")
-            st.metric("Average Diameter", f"{avg_diameter:.2f} m")
-            st.metric("Total Static Head", f"{elevation_diff:.1f} m")
+            col_a, col_b = st.columns(2)
+            
+            with col_a:
+                st.write("**System Metrics:**")
+                st.metric("Total Force Main Length", f"{total_length:.0f} m")
+                st.metric("Average Diameter", f"{avg_diameter:.2f} m")
+                st.metric("Total Static Head", f"{elevation_diff:.1f} m")
+            
+            with col_b:
+                if pumps_data:
+                    st.write("**Pump Summary:**")
+                    total_pump_head = sum(pump["head"] for pump in pumps_data)
+                    total_pump_flow = sum(pump["flow"] for pump in pumps_data)
+                    st.metric("Total Pump Head", f"{total_pump_head:.1f} m")
+                    st.metric("Total Pump Flow", f"{total_pump_flow:.3f} m³/s")
+                    
+                    st.write("**Individual Pumps:**")
+                    for pump in pumps_data:
+                        st.write(f"- {pump['id']}: {pump['flow']:.3f} m³/s @ {pump['head']:.1f} m")
+            
+            # System adequacy check
+            if pumps_data:
+                max_pump_head = max(pump["head"] for pump in pumps_data)
+                if max_pump_head > elevation_diff:
+                    surplus_head = max_pump_head - elevation_diff
+                    st.success(f"✅ Adequate pump head (surplus: {surplus_head:.1f} m)")
+                else:
+                    deficit_head = elevation_diff - max_pump_head
+                    st.error(f"❌ Insufficient pump head (deficit: {deficit_head:.1f} m)")
             
             # Simple flow distribution (equal split for multiple branches)
             if num_links > 1:
