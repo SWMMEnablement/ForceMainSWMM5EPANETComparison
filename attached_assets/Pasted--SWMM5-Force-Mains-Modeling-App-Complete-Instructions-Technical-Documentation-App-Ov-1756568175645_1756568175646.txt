@@ -1,0 +1,1270 @@
+# SWMM5 Force Mains Modeling App
+## Complete Instructions & Technical Documentation
+
+## 🚀 App Overview
+
+This Replit application provides a comprehensive toolkit for modeling, analyzing, and optimizing force mains in SWMM5. The app helps engineers design pump station discharge systems, troubleshoot existing models, and ensure proper hydraulic performance of pressurized sewer systems.
+
+### Key Features
+- **Force Main Designer**: Interactive tool for sizing and configuring force mains
+- **Friction Loss Calculator**: Compare Hazen-Williams vs Darcy-Weisbach methods
+- **Network Analyzer**: Validate complex force main networks
+- **Troubleshooting Assistant**: Diagnose and fix common modeling issues
+- **SWMM5 Input File Generator**: Create properly formatted .inp files
+- **Results Visualizer**: Plot hydraulic grade lines and system performance
+
+## 📋 Prerequisites & Setup
+
+### Required Knowledge
+- Basic understanding of hydraulic engineering
+- Familiarity with SWMM5 interface
+- Understanding of pump station operations
+
+### Installation in Replit
+```python
+# Required packages (add to requirements.txt)
+pandas==2.0.3
+numpy==1.24.3
+matplotlib==3.7.1
+plotly==5.14.1
+streamlit==1.24.0
+scipy==1.11.1
+pyyaml==6.0
+```
+
+### File Structure
+```
+/force-main-app
+├── main.py                 # Main application entry
+├── requirements.txt        # Python dependencies
+├── modules/
+│   ├── calculator.py       # Hydraulic calculations
+│   ├── network.py         # Network analysis
+│   ├── visualizer.py      # Data visualization
+│   ├── swmm_writer.py     # SWMM input file generation
+│   └── validator.py       # Model validation
+├── templates/
+│   ├── force_main.inp     # SWMM template files
+│   └── pump_station.inp
+├── data/
+│   ├── pipe_materials.csv # Reference data
+│   └── pump_curves.csv
+└── docs/
+    └── user_guide.md      # User documentation
+```
+
+## 🔧 Core Modules
+
+### Module 1: Force Main Calculator
+
+```python
+class ForceMaintCalculator:
+    """
+    Calculate hydraulic parameters for force mains
+    """
+    
+    def __init__(self):
+        self.gravity = 9.81  # m/s^2
+        self.water_density = 998.2  # kg/m^3
+        self.kinematic_viscosity = 1.004e-6  # m^2/s at 20°C
+    
+    def hazen_williams_loss(self, Q, D, L, C):
+        """
+        Calculate head loss using Hazen-Williams equation
+        
+        Parameters:
+        Q: Flow rate (m³/s)
+        D: Pipe diameter (m)
+        L: Pipe length (m)
+        C: Hazen-Williams coefficient (dimensionless)
+        
+        Returns:
+        hf: Friction head loss (m)
+        """
+        # For SI units
+        hf = 10.67 * (Q**1.852) * L / (C**1.852 * D**4.87)
+        return hf
+    
+    def darcy_weisbach_loss(self, Q, D, L, e):
+        """
+        Calculate head loss using Darcy-Weisbach equation
+        
+        Parameters:
+        Q: Flow rate (m³/s)
+        D: Pipe diameter (m)
+        L: Pipe length (m)
+        e: Absolute roughness (m)
+        
+        Returns:
+        hf: Friction head loss (m)
+        """
+        A = np.pi * D**2 / 4
+        V = Q / A
+        Re = V * D / self.kinematic_viscosity
+        
+        # Swamee-Jain approximation for friction factor
+        f = 0.25 / (np.log10(e/(3.7*D) + 5.74/Re**0.9))**2
+        
+        hf = f * L * V**2 / (D * 2 * self.gravity)
+        return hf
+    
+    def manning_to_hazen_williams(self, n, D, S):
+        """
+        Convert Manning's n to Hazen-Williams C
+        """
+        C = 1.067 / (n * (D / S)**0.04)
+        return C
+    
+    def check_full_flow_condition(self, pump_head, static_head, friction_loss):
+        """
+        Verify if force main will flow full
+        """
+        available_head = pump_head - static_head
+        if available_head > friction_loss:
+            return True, available_head - friction_loss
+        return False, available_head - friction_loss
+```
+
+### Module 2: Network Solver
+
+```python
+class ForceMainNetwork:
+    """
+    Solve complex force main networks using Newton-Raphson method
+    """
+    
+    def __init__(self):
+        self.nodes = {}
+        self.links = {}
+        self.pumps = {}
+        self.tolerance = 0.001
+        self.max_iterations = 100
+    
+    def add_wet_well(self, id, invert, max_depth, init_depth):
+        """Add wet well to network"""
+        self.nodes[id] = {
+            'type': 'wet_well',
+            'invert': invert,
+            'max_depth': max_depth,
+            'depth': init_depth,
+            'head': invert + init_depth
+        }
+    
+    def add_junction(self, id, invert, surcharge_depth=0):
+        """Add junction chamber to network"""
+        self.nodes[id] = {
+            'type': 'junction',
+            'invert': invert,
+            'surcharge_depth': surcharge_depth,
+            'depth': 0,
+            'head': invert
+        }
+    
+    def add_force_main(self, id, from_node, to_node, diameter, length, friction_params):
+        """Add force main link"""
+        self.links[id] = {
+            'type': 'force_main',
+            'from': from_node,
+            'to': to_node,
+            'diameter': diameter,
+            'length': length,
+            'friction': friction_params,
+            'flow': 0
+        }
+    
+    def solve_network(self):
+        """
+        Solve network using iterative Newton-Raphson method
+        """
+        iteration = 0
+        converged = False
+        
+        while not converged and iteration < self.max_iterations:
+            # Build system matrices
+            A, b = self.build_matrices()
+            
+            # Solve linear system
+            delta_H = np.linalg.solve(A, b)
+            
+            # Update heads
+            self.update_heads(delta_H)
+            
+            # Check convergence
+            converged = np.max(np.abs(delta_H)) < self.tolerance
+            iteration += 1
+        
+        return converged, iteration
+    
+    def build_matrices(self):
+        """Build Jacobian matrix and residual vector"""
+        n = len(self.nodes)
+        A = np.zeros((n, n))
+        b = np.zeros(n)
+        
+        # Continuity equations for each node
+        for i, node_id in enumerate(self.nodes):
+            # Sum of flows = 0
+            for link_id, link in self.links.items():
+                if link['from'] == node_id:
+                    # Outflow
+                    A[i, :], b[i] = self.add_link_contribution(link, -1)
+                elif link['to'] == node_id:
+                    # Inflow
+                    A[i, :], b[i] = self.add_link_contribution(link, 1)
+        
+        return A, b
+```
+
+### Module 3: SWMM Input Generator
+
+```python
+class SWMMInputGenerator:
+    """
+    Generate SWMM5 input files for force main systems
+    """
+    
+    def __init__(self):
+        self.title = "Force Main System"
+        self.options = {
+            'FLOW_UNITS': 'CMS',
+            'INFILTRATION': 'HORTON',
+            'FLOW_ROUTING': 'DYNWAVE',
+            'FORCE_MAIN_EQUATION': 'H-W',
+            'SURCHARGE_METHOD': 'SLOT',
+            'VARIABLE_STEP': 0.75,
+            'MIN_SURFAREA': 1.14,
+            'NORMAL_FLOW_LIMITED': 'BOTH'
+        }
+        
+    def create_force_main_system(self, config):
+        """
+        Create complete force main system
+        
+        config = {
+            'wet_well': {...},
+            'pump': {...},
+            'force_main': {...},
+            'discharge_node': {...}
+        }
+        """
+        inp_content = []
+        
+        # Title section
+        inp_content.append("[TITLE]")
+        inp_content.append(f";;{self.title}")
+        inp_content.append("")
+        
+        # Options section
+        inp_content.append("[OPTIONS]")
+        for key, value in self.options.items():
+            inp_content.append(f"{key:<20} {value}")
+        inp_content.append("")
+        
+        # Junctions section
+        inp_content.append("[JUNCTIONS]")
+        inp_content.append(";;Name  Elevation  MaxDepth  InitDepth  SurDepth  Aponded")
+        
+        # Add discharge node with surcharge
+        discharge = config['discharge_node']
+        inp_content.append(
+            f"{discharge['id']:<12} {discharge['elevation']:8.2f} "
+            f"{discharge['max_depth']:8.2f} {0:8.2f} "
+            f"{discharge['surcharge_depth']:8.2f} {0:8.2f}"
+        )
+        inp_content.append("")
+        
+        # Storage section for wet well
+        inp_content.append("[STORAGE]")
+        inp_content.append(";;Name  Elev  MaxDepth  InitDepth  Shape  Curve/Params")
+        
+        ww = config['wet_well']
+        inp_content.append(
+            f"{ww['id']:<12} {ww['invert']:8.2f} "
+            f"{ww['max_depth']:8.2f} {ww['init_depth']:8.2f} "
+            f"FUNCTIONAL {ww['area']:8.2f} 0 0 0"
+        )
+        inp_content.append("")
+        
+        # Conduits section
+        inp_content.append("[CONDUITS]")
+        inp_content.append(";;Name  From  To  Length  Roughness  InOffset  OutOffset  InitFlow  MaxFlow")
+        
+        fm = config['force_main']
+        inp_content.append(
+            f"{fm['id']:<12} {fm['from']:<12} {fm['to']:<12} "
+            f"{fm['length']:8.2f} {fm['roughness']:8.4f} "
+            f"{0:8.2f} {0:8.2f} {0:8.2f} {0:8.2f}"
+        )
+        inp_content.append("")
+        
+        # XSections section
+        inp_content.append("[XSECTIONS]")
+        inp_content.append(";;Link  Shape  Geom1  Geom2  Geom3  Geom4  Barrels  Culvert")
+        inp_content.append(
+            f"{fm['id']:<12} FORCE_MAIN {fm['diameter']:8.3f} "
+            f"0 0 0 1"
+        )
+        inp_content.append("")
+        
+        # Pumps section
+        inp_content.append("[PUMPS]")
+        inp_content.append(";;Name  From  To  Curve  Status  Startup  Shutoff")
+        
+        pump = config['pump']
+        inp_content.append(
+            f"{pump['id']:<12} {pump['from']:<12} {pump['to']:<12} "
+            f"{pump['curve']:<12} ON {pump['startup']:8.2f} {pump['shutoff']:8.2f}"
+        )
+        inp_content.append("")
+        
+        # Curves section
+        inp_content.append("[CURVES]")
+        inp_content.append(f";;Name  Type  X-Value  Y-Value")
+        
+        for point in pump['curve_data']:
+            inp_content.append(
+                f"{pump['curve']:<12} Pump4 {point[0]:8.3f} {point[1]:8.2f}"
+            )
+        
+        return "\n".join(inp_content)
+```
+
+### Module 4: Troubleshooting Assistant
+
+```python
+class TroubleshootingAssistant:
+    """
+    Diagnose and fix common force main modeling issues
+    """
+    
+    def __init__(self):
+        self.issues = []
+        self.recommendations = []
+    
+    def check_force_main_full(self, model_results):
+        """
+        Check if force main maintains full flow
+        """
+        for time, data in model_results.items():
+            d_over_D = data['depth'] / data['diameter']
+            
+            if d_over_D < 0.95:
+                self.issues.append({
+                    'severity': 'HIGH',
+                    'issue': f'Force main not full at time {time}',
+                    'd/D': d_over_D,
+                    'location': data['link_id']
+                })
+                
+                # Generate recommendations
+                self.add_recommendations_for_partial_flow()
+    
+    def add_recommendations_for_partial_flow(self):
+        """
+        Provide solutions for partial flow issues
+        """
+        self.recommendations.extend([
+            {
+                'priority': 1,
+                'action': 'Add Break Node',
+                'details': '''
+                1. Insert a manhole at the force main outlet
+                2. Set surcharge depth = 1.5 * pipe diameter
+                3. This maintains backpressure to keep pipe full
+                ''',
+                'code_example': '''
+                [JUNCTIONS]
+                BreakNode  100.0  3.0  0  1.5  0
+                '''
+            },
+            {
+                'priority': 2,
+                'action': 'Install Flap Gate',
+                'details': '''
+                1. Add flap gate to prevent backflow
+                2. Set type = FLAP in [OUTLETS] section
+                3. Maintains unidirectional flow
+                ''',
+                'code_example': '''
+                [OUTLETS]
+                FlapGate  Node1  Node2  TABULAR/HEAD  FlowCurve
+                '''
+            },
+            {
+                'priority': 3,
+                'action': 'Increase Downstream Roughness',
+                'details': '''
+                1. Multiply gravity main roughness by 2-3x
+                2. Simulates transition losses
+                3. Maintains higher upstream depth
+                ''',
+                'calculation': '''
+                n_modified = n_original * 2.5
+                '''
+            },
+            {
+                'priority': 4,
+                'action': 'Reduce Time Step',
+                'details': '''
+                1. Set routing time step ≤ 5 seconds
+                2. Enable variable time step
+                3. Use safety factor = 0.75
+                ''',
+                'settings': '''
+                [OPTIONS]
+                ROUTING_STEP        5
+                VARIABLE_STEP       0.75
+                '''
+            }
+        ])
+    
+    def check_pump_cycling(self, pump_data, time_step):
+        """
+        Detect rapid pump cycling issues
+        """
+        on_off_events = []
+        
+        for i in range(1, len(pump_data)):
+            if pump_data[i]['status'] != pump_data[i-1]['status']:
+                on_off_events.append(pump_data[i]['time'])
+        
+        if len(on_off_events) > 1:
+            min_cycle_time = min(np.diff(on_off_events))
+            
+            if min_cycle_time < 10 * time_step:
+                self.issues.append({
+                    'severity': 'MEDIUM',
+                    'issue': 'Rapid pump cycling detected',
+                    'min_cycle_time': min_cycle_time,
+                    'recommended_timestep': min_cycle_time / 10
+                })
+    
+    def validate_friction_coefficients(self, pipe_material, coefficient, method):
+        """
+        Validate friction coefficients are reasonable
+        """
+        valid_ranges = {
+            'Hazen-Williams': {
+                'PVC': (130, 150),
+                'Ductile Iron': (100, 140),
+                'Concrete': (100, 130),
+                'Steel': (90, 120)
+            },
+            'Darcy-Weisbach': {
+                'PVC': (0.0015, 0.003),
+                'Ductile Iron': (0.025, 0.12),
+                'Concrete': (0.3, 3.0),
+                'Steel': (0.045, 0.09)
+            }
+        }
+        
+        if method in valid_ranges:
+            if pipe_material in valid_ranges[method]:
+                min_val, max_val = valid_ranges[method][pipe_material]
+                if not (min_val <= coefficient <= max_val):
+                    self.issues.append({
+                        'severity': 'LOW',
+                        'issue': f'Unusual {method} coefficient',
+                        'value': coefficient,
+                        'expected_range': (min_val, max_val),
+                        'material': pipe_material
+                    })
+```
+
+### Module 5: Visualization Tools
+
+```python
+class ForceMainVisualizer:
+    """
+    Create interactive visualizations for force main analysis
+    """
+    
+    def __init__(self):
+        self.figures = []
+    
+    def plot_hydraulic_grade_line(self, profile_data):
+        """
+        Plot HGL along force main alignment
+        """
+        import plotly.graph_objects as go
+        
+        fig = go.Figure()
+        
+        # Ground profile
+        fig.add_trace(go.Scatter(
+            x=profile_data['distance'],
+            y=profile_data['ground_elevation'],
+            mode='lines',
+            name='Ground Surface',
+            line=dict(color='brown', width=2)
+        ))
+        
+        # Pipe profile
+        fig.add_trace(go.Scatter(
+            x=profile_data['distance'],
+            y=profile_data['pipe_invert'],
+            mode='lines',
+            name='Pipe Invert',
+            line=dict(color='black', width=3)
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=profile_data['distance'],
+            y=profile_data['pipe_crown'],
+            mode='lines',
+            name='Pipe Crown',
+            line=dict(color='black', width=3, dash='dash')
+        ))
+        
+        # HGL
+        fig.add_trace(go.Scatter(
+            x=profile_data['distance'],
+            y=profile_data['hgl'],
+            mode='lines',
+            name='Hydraulic Grade Line',
+            line=dict(color='blue', width=2)
+        ))
+        
+        # Add annotations for key points
+        fig.add_annotation(
+            x=0, y=profile_data['hgl'][0],
+            text="Pump Station",
+            showarrow=True,
+            arrowhead=2
+        )
+        
+        fig.update_layout(
+            title="Force Main Hydraulic Profile",
+            xaxis_title="Distance (m)",
+            yaxis_title="Elevation (m)",
+            hovermode='x unified'
+        )
+        
+        return fig
+    
+    def plot_pump_curve_operation(self, pump_curve, operating_points):
+        """
+        Show pump curve with operating points
+        """
+        import matplotlib.pyplot as plt
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        
+        # Head-Flow curve
+        ax1.plot(pump_curve['flow'], pump_curve['head'], 
+                'b-', linewidth=2, label='Pump Curve')
+        ax1.scatter(operating_points['flow'], operating_points['head'],
+                   c='red', s=50, label='Operating Points')
+        ax1.set_xlabel('Flow (m³/s)')
+        ax1.set_ylabel('Head (m)')
+        ax1.set_title('Pump Performance Curve')
+        ax1.grid(True, alpha=0.3)
+        ax1.legend()
+        
+        # Efficiency curve
+        ax2.plot(pump_curve['flow'], pump_curve['efficiency'],
+                'g-', linewidth=2)
+        ax2.scatter(operating_points['flow'], operating_points['efficiency'],
+                   c='red', s=50)
+        ax2.set_xlabel('Flow (m³/s)')
+        ax2.set_ylabel('Efficiency (%)')
+        ax2.set_title('Pump Efficiency')
+        ax2.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        return fig
+    
+    def create_network_diagram(self, network):
+        """
+        Generate interactive network diagram
+        """
+        import networkx as nx
+        import plotly.graph_objects as go
+        
+        # Create graph
+        G = nx.DiGraph()
+        
+        # Add nodes
+        for node_id, node_data in network.nodes.items():
+            G.add_node(node_id, **node_data)
+        
+        # Add edges (pipes and pumps)
+        for link_id, link_data in network.links.items():
+            G.add_edge(link_data['from'], link_data['to'],
+                      id=link_id, **link_data)
+        
+        # Generate layout
+        pos = nx.spring_layout(G)
+        
+        # Create Plotly figure
+        edge_trace = []
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_trace.append(go.Scatter(
+                x=[x0, x1, None],
+                y=[y0, y1, None],
+                mode='lines',
+                line=dict(width=2, color='gray'),
+                hoverinfo='none'
+            ))
+        
+        node_trace = go.Scatter(
+            x=[pos[node][0] for node in G.nodes()],
+            y=[pos[node][1] for node in G.nodes()],
+            mode='markers+text',
+            text=[str(node) for node in G.nodes()],
+            textposition="top center",
+            marker=dict(
+                size=15,
+                color=['blue' if G.nodes[node]['type'] == 'wet_well' 
+                       else 'green' for node in G.nodes()],
+                line=dict(width=2, color='black')
+            ),
+            hoverinfo='text'
+        )
+        
+        fig = go.Figure(data=edge_trace + [node_trace])
+        fig.update_layout(
+            title="Force Main Network Diagram",
+            showlegend=False,
+            hovermode='closest',
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+        )
+        
+        return fig
+```
+
+## 🎮 User Interface (Streamlit App)
+
+```python
+# main.py - Streamlit application
+
+import streamlit as st
+import pandas as pd
+from modules.calculator import ForceMainCalculator
+from modules.network import ForceMainNetwork
+from modules.swmm_writer import SWMMInputGenerator
+from modules.visualizer import ForceMainVisualizer
+from modules.validator import TroubleshootingAssistant
+
+st.set_page_config(
+    page_title="SWMM5 Force Main Analyzer",
+    page_icon="🚰",
+    layout="wide"
+)
+
+st.title("🚰 SWMM5 Force Main Modeling & Analysis Tool")
+
+# Sidebar navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio(
+    "Select Module",
+    ["🏠 Home", "🔢 Calculator", "🕸️ Network", "📝 SWMM Generator", 
+     "🔧 Troubleshoot", "📊 Visualize", "📚 Documentation"]
+)
+
+if page == "🏠 Home":
+    st.header("Welcome to the Force Main Analyzer")
+    st.write("""
+    This comprehensive tool helps you:
+    - Design and size force mains
+    - Analyze complex networks
+    - Generate SWMM5 input files
+    - Troubleshoot common issues
+    - Visualize system performance
+    """)
+    
+    # Quick start guide
+    with st.expander("🚀 Quick Start Guide"):
+        st.markdown("""
+        1. **Calculator**: Start here to size your force main
+        2. **Network**: Model complex multi-pipe systems
+        3. **SWMM Generator**: Create input files
+        4. **Troubleshoot**: Fix modeling issues
+        5. **Visualize**: Analyze results
+        """)
+
+elif page == "🔢 Calculator":
+    st.header("Force Main Hydraulic Calculator")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Input Parameters")
+        
+        # Pipe parameters
+        flow = st.number_input("Flow Rate (m³/s)", 0.01, 10.0, 0.5)
+        diameter = st.number_input("Diameter (m)", 0.1, 3.0, 0.5)
+        length = st.number_input("Length (m)", 10, 10000, 1000)
+        
+        # Friction method
+        method = st.selectbox(
+            "Friction Loss Method",
+            ["Hazen-Williams", "Darcy-Weisbach"]
+        )
+        
+        if method == "Hazen-Williams":
+            material = st.selectbox(
+                "Pipe Material",
+                ["PVC", "Ductile Iron", "Concrete", "Steel"]
+            )
+            c_values = {"PVC": 140, "Ductile Iron": 120, 
+                       "Concrete": 110, "Steel": 100}
+            c_coeff = st.number_input(
+                "C Coefficient", 50, 150, c_values[material]
+            )
+        else:
+            roughness = st.number_input(
+                "Roughness Height (mm)", 0.001, 5.0, 0.15
+            ) / 1000  # Convert to meters
+    
+    with col2:
+        st.subheader("Results")
+        
+        calc = ForceMainCalculator()
+        
+        if st.button("Calculate"):
+            if method == "Hazen-Williams":
+                head_loss = calc.hazen_williams_loss(flow, diameter, length, c_coeff)
+            else:
+                head_loss = calc.darcy_weisbach_loss(flow, diameter, length, roughness)
+            
+            # Display results
+            st.metric("Friction Head Loss", f"{head_loss:.2f} m")
+            
+            # Velocity calculation
+            velocity = flow / (3.14159 * (diameter/2)**2)
+            st.metric("Flow Velocity", f"{velocity:.2f} m/s")
+            
+            # Friction slope
+            friction_slope = head_loss / length
+            st.metric("Friction Slope", f"{friction_slope:.4f} m/m")
+            
+            # Recommendations
+            if velocity > 3.0:
+                st.warning("⚠️ High velocity - consider larger diameter")
+            elif velocity < 0.6:
+                st.warning("⚠️ Low velocity - risk of sedimentation")
+            
+            if friction_slope > 0.01:
+                st.warning("⚠️ High friction losses - consider larger diameter or parallel mains")
+
+elif page == "🕸️ Network":
+    st.header("Force Main Network Solver")
+    
+    # Network configuration
+    st.subheader("Network Configuration")
+    
+    # Use session state to maintain network
+    if 'network' not in st.session_state:
+        st.session_state.network = ForceMainNetwork()
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.write("**Add Wet Well**")
+        ww_id = st.text_input("Wet Well ID", "WW1")
+        ww_invert = st.number_input("Invert Elevation (m)", 0.0, 100.0, 10.0)
+        ww_depth = st.number_input("Max Depth (m)", 1.0, 10.0, 3.0)
+        
+        if st.button("Add Wet Well"):
+            st.session_state.network.add_wet_well(
+                ww_id, ww_invert, ww_depth, ww_depth/2
+            )
+            st.success(f"Added wet well: {ww_id}")
+    
+    with col2:
+        st.write("**Add Junction**")
+        junc_id = st.text_input("Junction ID", "J1")
+        junc_elev = st.number_input("Elevation (m)", 0.0, 100.0, 15.0)
+        junc_surcharge = st.number_input("Surcharge Depth (m)", 0.0, 5.0, 1.0)
+        
+        if st.button("Add Junction"):
+            st.session_state.network.add_junction(
+                junc_id, junc_elev, junc_surcharge
+            )
+            st.success(f"Added junction: {junc_id}")
+    
+    with col3:
+        st.write("**Add Force Main**")
+        fm_id = st.text_input("Force Main ID", "FM1")
+        fm_from = st.text_input("From Node", "WW1")
+        fm_to = st.text_input("To Node", "J1")
+        fm_diam = st.number_input("Diameter (m)", 0.1, 2.0, 0.5)
+        fm_length = st.number_input("FM Length (m)", 10, 5000, 500)
+        
+        if st.button("Add Force Main"):
+            st.session_state.network.add_force_main(
+                fm_id, fm_from, fm_to, fm_diam, fm_length,
+                {'method': 'HW', 'coefficient': 120}
+            )
+            st.success(f"Added force main: {fm_id}")
+    
+    # Solve network
+    if st.button("🔄 Solve Network", type="primary"):
+        converged, iterations = st.session_state.network.solve_network()
+        if converged:
+            st.success(f"✅ Network solved in {iterations} iterations")
+            
+            # Display results
+            results_df = pd.DataFrame(st.session_state.network.get_results())
+            st.dataframe(results_df)
+        else:
+            st.error("❌ Network did not converge")
+
+elif page == "📝 SWMM Generator":
+    st.header("SWMM5 Input File Generator")
+    
+    generator = SWMMInputGenerator()
+    
+    # System configuration
+    st.subheader("Configure Force Main System")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Wet Well Configuration**")
+        ww_config = {
+            'id': st.text_input("Wet Well ID", "WetWell1"),
+            'invert': st.number_input("Invert (m)", 0.0, 50.0, 10.0),
+            'max_depth': st.number_input("Max Depth (m)", 2.0, 10.0, 4.0),
+            'init_depth': st.number_input("Initial Depth (m)", 0.0, 4.0, 2.0),
+            'area': st.number_input("Surface Area (m²)", 5.0, 100.0, 20.0)
+        }
+        
+        st.write("**Pump Configuration**")
+        pump_config = {
+            'id': st.text_input("Pump ID", "Pump1"),
+            'from': ww_config['id'],
+            'to': st.text_input("Pump Discharge Node", "Node1"),
+            'curve': st.text_input("Pump Curve Name", "PumpCurve1"),
+            'startup': st.number_input("Startup Depth (m)", 0.5, 3.0, 1.0),
+            'shutoff': st.number_input("Shutoff Depth (m)", 0.1, 1.0, 0.3)
+        }
+    
+    with col2:
+        st.write("**Force Main Configuration**")
+        fm_config = {
+            'id': st.text_input("Force Main ID", "ForceMn1"),
+            'from': pump_config['to'],
+            'to': st.text_input("Discharge Node", "Outfall1"),
+            'length': st.number_input("Length (m)", 10, 5000, 1000),
+            'diameter': st.number_input("FM Diameter (m)", 0.1, 2.0, 0.4),
+            'roughness': st.number_input("HW C-factor", 80, 150, 120)
+        }
+        
+        st.write("**Discharge Node**")
+        discharge_config = {
+            'id': fm_config['to'],
+            'elevation': st.number_input("Elevation (m)", 0.0, 50.0, 20.0),
+            'max_depth': st.number_input("Node Max Depth (m)", 1.0, 10.0, 3.0),
+            'surcharge_depth': st.number_input("Surcharge (m)", 0.0, 5.0, 1.5)
+        }
+    
+    # Pump curve data
+    st.subheader("Pump Curve Data")
+    
+    curve_points = st.number_input("Number of Curve Points", 3, 10, 4)
+    curve_data = []
+    
+    cols = st.columns(curve_points)
+    for i, col in enumerate(cols):
+        with col:
+            flow = st.number_input(f"Flow {i+1}", 0.0, 1.0, i*0.2, key=f"flow_{i}")
+            head = st.number_input(f"Head {i+1}", 0.0, 100.0, 30-i*5, key=f"head_{i}")
+            curve_data.append((flow, head))
+    
+    pump_config['curve_data'] = curve_data
+    
+    # Generate file
+    if st.button("📄 Generate SWMM Input File", type="primary"):
+        config = {
+            'wet_well': ww_config,
+            'pump': pump_config,
+            'force_main': fm_config,
+            'discharge_node': discharge_config
+        }
+        
+        inp_content = generator.create_force_main_system(config)
+        
+        # Display and download
+        st.text_area("SWMM Input File Content", inp_content, height=400)
+        
+        st.download_button(
+            label="⬇️ Download .inp File",
+            data=inp_content,
+            file_name="force_main_system.inp",
+            mime="text/plain"
+        )
+
+elif page == "🔧 Troubleshoot":
+    st.header("Force Main Troubleshooting Assistant")
+    
+    assistant = TroubleshootingAssistant()
+    
+    # Upload results file
+    st.subheader("Upload SWMM Results")
+    
+    uploaded_file = st.file_uploader(
+        "Choose a SWMM output file (.rpt or .out)",
+        type=['rpt', 'out', 'csv']
+    )
+    
+    if uploaded_file is not None:
+        # Process file (simplified example)
+        st.info("🔍 Analyzing model results...")
+        
+        # Mock analysis results
+        model_results = {
+            't_100': {'depth': 0.35, 'diameter': 0.4, 'link_id': 'FM1'},
+            't_200': {'depth': 0.38, 'diameter': 0.4, 'link_id': 'FM1'}
+        }
+        
+        assistant.check_force_main_full(model_results)
+        
+        # Display issues
+        if assistant.issues:
+            st.error(f"Found {len(assistant.issues)} issues")
+            
+            for issue in assistant.issues:
+                severity_color = {
+                    'HIGH': '🔴',
+                    'MEDIUM': '🟡',
+                    'LOW': '🟢'
+                }
+                
+                st.write(f"{severity_color[issue['severity']]} **{issue['issue']}**")
+                
+                if 'd/D' in issue:
+                    st.write(f"   d/D ratio: {issue['d/D']:.2f}")
+        
+        # Display recommendations
+        if assistant.recommendations:
+            st.subheader("📋 Recommended Actions")
+            
+            for rec in sorted(assistant.recommendations, key=lambda x: x['priority']):
+                with st.expander(f"Priority {rec['priority']}: {rec['action']}"):
+                    st.write(rec['details'])
+                    
+                    if 'code_example' in rec:
+                        st.code(rec['code_example'], language='ini')
+                    
+                    if 'calculation' in rec:
+                        st.code(rec['calculation'], language='python')
+    
+    # Manual diagnostics
+    st.subheader("Quick Diagnostics")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("Check Time Step"):
+            st.write("""
+            **Recommended Time Steps:**
+            - Steady flow: 30-60 seconds
+            - Variable flow: 5-30 seconds
+            - Pump cycling: 1-5 seconds
+            - Complex networks: 0.5-5 seconds
+            """)
+    
+    with col2:
+        if st.button("Friction Coefficients"):
+            st.write("""
+            **Typical Hazen-Williams C:**
+            - New PVC: 140-150
+            - Ductile Iron: 100-140
+            - Concrete: 100-130
+            - Old Steel: 80-100
+            """)
+
+elif page == "📊 Visualize":
+    st.header("Force Main Visualization")
+    
+    viz = ForceMainVisualizer()
+    
+    # Select visualization type
+    viz_type = st.selectbox(
+        "Select Visualization",
+        ["Hydraulic Grade Line", "Pump Performance", "Network Diagram", "Time Series"]
+    )
+    
+    if viz_type == "Hydraulic Grade Line":
+        st.subheader("Hydraulic Profile")
+        
+        # Generate sample data
+        import numpy as np
+        
+        distance = np.linspace(0, 1000, 100)
+        ground = 20 + 10 * np.sin(distance/200)
+        invert = 10 + 8 * distance/1000
+        crown = invert + 0.5
+        hgl = invert + 0.5 + 5 * np.exp(-distance/500)
+        
+        profile_data = {
+            'distance': distance,
+            'ground_elevation': ground,
+            'pipe_invert': invert,
+            'pipe_crown': crown,
+            'hgl': hgl
+        }
+        
+        fig = viz.plot_hydraulic_grade_line(profile_data)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Analysis
+        min_cover = np.min(ground - crown)
+        max_pressure = np.max(hgl - crown)
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Min Cover", f"{min_cover:.2f} m")
+        col2.metric("Max Pressure", f"{max_pressure:.2f} m")
+        col3.metric("Total Head Loss", f"{hgl[0]-hgl[-1]:.2f} m")
+
+elif page == "📚 Documentation":
+    st.header("Technical Documentation")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["Theory", "Equations", "Best Practices", "FAQ"]
+    )
+    
+    with tab1:
+        st.markdown("""
+        ## Force Main Hydraulics Theory
+        
+        ### Pressure Flow Fundamentals
+        Force mains operate under pressure, with no free surface. Key principles:
+        
+        1. **Continuity Equation**: Q = V × A (constant along pipe)
+        2. **Energy Equation**: Bernoulli's principle with friction losses
+        3. **Momentum Conservation**: Newton's second law for fluid flow
+        
+        ### Friction Loss Mechanisms
+        - **Skin friction**: Wall shear stress
+        - **Form drag**: Minor losses at fittings
+        - **Turbulence**: Energy dissipation in eddies
+        """)
+    
+    with tab2:
+        st.markdown("""
+        ## Key Equations
+        
+        ### Hazen-Williams (SI Units)
+        ```
+        hf = 10.67 × Q^1.852 × L / (C^1.852 × D^4.87)
+        ```
+        
+        ### Darcy-Weisbach
+        ```
+        hf = f × L × V² / (D × 2g)
+        ```
+        
+        ### Swamee-Jain (friction factor)
+        ```
+        f = 0.25 / [log₁₀(e/(3.7D) + 5.74/Re^0.9)]²
+        ```
+        
+        ### Reynolds Number
+        ```
+        Re = V × D / ν
+        ```
+        """)
+    
+    with tab3:
+        st.markdown("""
+        ## Best Practices
+        
+        ### Design Guidelines
+        1. **Velocity Range**: 0.6 - 3.0 m/s
+        2. **Minimum Cover**: 1.0 - 1.5 m
+        3. **Air Valves**: At high points
+        4. **Drain Valves**: At low points
+        
+        ### Modeling Tips
+        1. Start with simple networks
+        2. Validate against hand calculations
+        3. Use appropriate time steps
+        4. Check mass balance
+        5. Review pressure profiles
+        """)
+    
+    with tab4:
+        st.markdown("""
+        ## Frequently Asked Questions
+        
+        **Q: Why isn't my force main staying full?**
+        A: Common causes include insufficient downstream pressure, 
+        inadequate surcharge depth, or too large time steps.
+        
+        **Q: HW vs DW - which to use?**
+        A: HW is simpler and widely used in the US. DW is more 
+        theoretically correct and works for all fluids.
+        
+        **Q: How to model air valves?**
+        A: SWMM5 doesn't explicitly model air valves. Consider 
+        their effect through adjusted minor losses.
+        """)
+
+# Footer
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+**Version:** 1.0.0  
+**Updated:** 2024  
+**Support:** [GitHub](https://github.com/yourusername/swmm-force-main)
+""")
+```
+
+## 📦 Deployment Instructions
+
+### For Replit:
+
+1. **Create New Repl**
+   - Choose Python template
+   - Name: "swmm5-force-main-analyzer"
+
+2. **Setup Files**
+   - Copy all module files to appropriate directories
+   - Add requirements.txt
+   - Configure .replit file:
+
+```toml
+# .replit
+run = "streamlit run main.py --server.port=8080 --server.address=0.0.0.0"
+
+[nix]
+channel = "stable-21_05"
+
+[env]
+STREAMLIT_SERVER_PORT = "8080"
+STREAMLIT_SERVER_ADDRESS = "0.0.0.0"
+```
+
+3. **Install Dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+4. **Run Application**
+```bash
+streamlit run main.py
+```
+
+## 🔐 Environment Variables
+
+Create `.env` file:
+```
+SWMM_PATH=/path/to/swmm5.exe
+DEFAULT_TIME_STEP=5
+MAX_ITERATIONS=100
+TOLERANCE=0.001
+```
+
+## 📊 Sample Data Files
+
+Include these in `/data` directory:
+
+### pipe_materials.csv
+```csv
+Material,HW_C_New,HW_C_Old,DW_Roughness_mm
+PVC,150,140,0.0015
+Ductile Iron,140,100,0.025
+Concrete,130,100,0.3
+Steel,120,80,0.045
+```
+
+### pump_curves.csv
+```csv
+Pump_Model,Flow_m3s,Head_m,Efficiency
+Model_A,0.0,35,0
+Model_A,0.1,32,65
+Model_A,0.2,28,75
+Model_A,0.3,22,70
+Model_A,0.4,15,60
+```
+
+## 🧪 Testing
+
+```python
+# test_calculator.py
+import unittest
+from modules.calculator import ForceMainCalculator
+
+class TestForceMainCalculator(unittest.TestCase):
+    def setUp(self):
+        self.calc = ForceMainCalculator()
+    
+    def test_hazen_williams(self):
+        # Test known values
+        Q = 0.5  # m³/s
+        D = 0.5  # m
+        L = 1000  # m
+        C = 120
+        
+        hf = self.calc.hazen_williams_loss(Q, D, L, C)
+        self.assertAlmostEqual(hf, 24.3, places=1)
+    
+    def test_darcy_weisbach(self):
+        Q = 0.5
+        D = 0.5
+        L = 1000
+        e = 0.0015
+        
+        hf = self.calc.darcy_weisbach_loss(Q, D, L, e)
+        self.assertGreater(hf, 0)
+        self.assertLess(hf, 100)
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+## 🚀 Advanced Features
+
+### API Integration
+```python
+# api.py - REST API for external integration
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class ForceMainRequest(BaseModel):
+    flow: float
+    diameter: float
+    length: float
+    method: str
+    coefficient: float
+
+@app.post("/calculate")
+async def calculate_force_main(request: ForceMainRequest):
+    calc = ForceMainCalculator()
+    
+    if request.method == "HW":
+        loss = calc.hazen_williams_loss(
+            request.flow, request.diameter, 
+            request.length, request.coefficient
+        )
+    else:
+        loss = calc.darcy_weisbach_loss(
+            request.flow, request.diameter,
+            request.length, request.coefficient
+        )
+    
+    return {"head_loss": loss}
+```
+
+## 📈 Performance Optimization
+
+- Use NumPy for vectorized calculations
+- Implement caching for repeated calculations
+- Parallel processing for network solutions
+- Lazy loading of visualization libraries
+
+## 🔄 Updates & Maintenance
+
+- Regular updates for SWMM5 compatibility
+- Community-driven feature requests
+- Automated testing pipeline
+- Documentation updates with each release
+
+This comprehensive Replit application provides engineers with a complete toolkit for force main analysis in SWMM5, from basic calculations to complex network modeling and troubleshooting.
