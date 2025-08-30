@@ -307,14 +307,14 @@ def network_analyzer():
             fig.add_trace(go.Scatter(
                 x=[i], y=[node["elevation"]],
                 mode='markers+text',
-                marker=dict(size=20, color='blue' if node["type"] == "junction" else 'red'),
+                marker=dict(size=20, color='blue' if node["type"] == "junction" else 'orange'),
                 text=[node["id"]],
                 textposition="top center",
                 name=node["type"],
                 showlegend=i==0
             ))
         
-        # Add links
+        # Add links (force mains)
         for link in links_data:
             from_idx = next(i for i, n in enumerate(nodes_data) if n["id"] == link["from"])
             to_idx = next(i for i, n in enumerate(nodes_data) if n["id"] == link["to"])
@@ -329,45 +329,61 @@ def network_analyzer():
                 hovertemplate=f"Force Main: {link['id']}<br>Diameter: {link['diameter']:.2f}m<br>Length: {link['length']:.0f}m<extra></extra>"
             ))
         
-        # Add pumps
-        for pump in pumps_data:
-            from_idx = next(i for i, n in enumerate(nodes_data) if n["id"] == pump["from"])
-            to_idx = next(i for i, n in enumerate(nodes_data) if n["id"] == pump["to"])
-            
-            # Draw pump as a thicker red line with arrow markers
-            fig.add_trace(go.Scatter(
-                x=[from_idx, to_idx],
-                y=[nodes_data[from_idx]["elevation"], nodes_data[to_idx]["elevation"]],
-                mode='lines+markers',
-                line=dict(color='red', width=5),
-                marker=dict(size=8, symbol='arrow-right', color='red'),
-                name='Pump',
-                showlegend=False,
-                hovertemplate=f"Pump: {pump['id']}<br>Design Head: {pump['head']:.1f}m<br>Design Flow: {pump['flow']:.3f}m³/s<extra></extra>"
-            ))
-            
-            # Add pump label at midpoint
-            mid_x = (from_idx + to_idx) / 2
-            mid_y = (nodes_data[from_idx]["elevation"] + nodes_data[to_idx]["elevation"]) / 2
-            fig.add_annotation(
-                x=mid_x,
-                y=mid_y,
-                text=pump["id"],
-                showarrow=False,
-                bgcolor="white",
-                bordercolor="red",
-                borderwidth=1,
-                font=dict(size=10, color="red")
-            )
+        # Add pumps if any exist
+        if pumps_data:
+            for pump in pumps_data:
+                from_idx = next(i for i, n in enumerate(nodes_data) if n["id"] == pump["from"])
+                to_idx = next(i for i, n in enumerate(nodes_data) if n["id"] == pump["to"])
+                
+                # Draw pump as a red line with arrow symbols
+                fig.add_trace(go.Scatter(
+                    x=[from_idx, to_idx],
+                    y=[nodes_data[from_idx]["elevation"], nodes_data[to_idx]["elevation"]],
+                    mode='lines+markers',
+                    line=dict(color='red', width=6, dash='dot'),
+                    marker=dict(size=12, symbol='triangle-right', color='red'),
+                    name=f'Pump {pump["id"]}',
+                    showlegend=True,
+                    hovertemplate=f"Pump: {pump['id']}<br>Design Head: {pump['head']:.1f}m<br>Design Flow: {pump['flow']:.3f}m³/s<extra></extra>"
+                ))
+                
+                # Add pump symbol in the middle
+                mid_x = (from_idx + to_idx) / 2
+                mid_y = (nodes_data[from_idx]["elevation"] + nodes_data[to_idx]["elevation"]) / 2
+                
+                # Add a circle symbol for pump
+                fig.add_trace(go.Scatter(
+                    x=[mid_x],
+                    y=[mid_y],
+                    mode='markers+text',
+                    marker=dict(size=15, color='red', symbol='circle', line=dict(width=2, color='white')),
+                    text=['P'],
+                    textfont=dict(color='white', size=10),
+                    name=f'Pump Symbol',
+                    showlegend=False,
+                    hovertemplate=f"Pump: {pump['id']}<extra></extra>"
+                ))
         
         fig.update_layout(
-            title="Network Layout",
+            title="Network Layout (Green=Force Main, Red=Pump)",
             xaxis_title="Node Position",
             yaxis_title="Elevation (m)",
-            showlegend=True
+            showlegend=True,
+            height=400
         )
         
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Show network summary
+        st.write("**Network Summary:**")
+        st.write(f"- Nodes: {len(nodes_data)}")
+        st.write(f"- Force Mains: {len(links_data)}")
+        st.write(f"- Pumps: {len(pumps_data)}")
+        
+        if pumps_data:
+            st.write("**Pump Details:**")
+            for pump in pumps_data:
+                st.write(f"- {pump['id']}: {pump['from']} → {pump['to']} ({pump['flow']:.3f} m³/s @ {pump['head']:.1f} m)")
         
         # Network analysis results
         st.subheader("Analysis Results")
