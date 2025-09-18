@@ -20,33 +20,219 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS to make selectboxes bigger
+# Enhanced Custom CSS for better visual design
 st.markdown("""
 <style>
-/* Make selectbox dropdown taller */
-div[data-baseweb="select"] > div:first-child {
-    max-height: 400px !important;
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Global Styling */
+.block-container {
+    padding-top: 2rem;
 }
 
-/* Alternative selector for selectbox dropdown */
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif !important;
+    color: #1f2937 !important;
+}
+
+/* Main title styling */
+.block-container h1 {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 3rem !important;
+    font-weight: 700 !important;
+    text-align: center;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Subtitle styling */
+.block-container p {
+    text-align: center;
+    color: #6b7280 !important;
+    font-size: 1.1rem !important;
+    margin-bottom: 2rem !important;
+}
+
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+}
+
+[data-testid="stSidebar"] > div {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+    padding: 1.5rem 1rem !important;
+}
+
+/* Card-like containers */
+.metric-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e5e7eb;
+    margin: 1rem 0;
+}
+
+/* Enhanced selectboxes */
+[data-testid="stSelectbox"] > div:first-child {
+    max-height: 400px !important;
+    border-radius: 8px !important;
+    border: 2px solid #e5e7eb !important;
+}
+
 .stSelectbox > div > div > div {
     max-height: 400px !important;
 }
 
-/* Make the dropdown list container bigger */
 div[role="listbox"] {
     max-height: 400px !important;
+    border-radius: 8px !important;
 }
 
-/* Ensure scrollable area is properly sized */
-div[data-baseweb="menu"] {
+[data-testid="stSelectbox"] div[role="listbox"] {
     max-height: 400px !important;
     overflow-y: auto !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Additional styling for better visibility */
 div[data-testid="stSelectbox"] > div:first-child {
-    min-height: 40px;
+    min-height: 45px;
+    border-radius: 8px !important;
+}
+
+/* Enhanced input fields */
+.stNumberInput > div > div > input {
+    border-radius: 8px !important;
+    border: 2px solid #e5e7eb !important;
+    padding: 0.75rem !important;
+    font-size: 1rem !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.stNumberInput > div > div > input:focus {
+    border-color: #667eea !important;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+}
+
+.stTextInput > div > div > input {
+    border-radius: 8px !important;
+    border: 2px solid #e5e7eb !important;
+    padding: 0.75rem !important;
+    font-size: 1rem !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.stTextInput > div > div > input:focus {
+    border-color: #667eea !important;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+}
+
+/* Enhanced sliders */
+.stSlider > div > div > div {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+/* Enhanced buttons */
+.stButton > button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1.5rem !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Enhanced metrics */
+div[data-testid="metric-container"] {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 1.5rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+div[data-testid="metric-container"]:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+    transform: translateY(-1px) !important;
+}
+
+div[data-testid="metric-container"] > div {
+    color: #1f2937 !important;
+}
+
+/* Success, warning, and error styling */
+.stAlert > div {
+    border-radius: 8px !important;
+    border: none !important;
+    padding: 1rem 1.25rem !important;
+    font-weight: 500 !important;
+}
+
+/* Info boxes */
+.stInfo > div {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+    border: 1px solid #93c5fd !important;
+    border-radius: 8px !important;
+    color: #1e40af !important;
+}
+
+/* Section headers */
+.stSubheader {
+    color: #374151 !important;
+    font-weight: 600 !important;
+    font-size: 1.25rem !important;
+    margin: 1.5rem 0 1rem 0 !important;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 2px solid #e5e7eb !important;
+}
+
+/* Enhanced columns */
+div[data-testid="column"] {
+    padding: 1rem !important;
+}
+
+/* Enhanced plots */
+div[data-testid="stPlotlyChart"] {
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Navigation styling */
+[data-testid="stSidebar"] [data-testid="stSelectbox"] {
+    margin-bottom: 2rem !important;
+}
+
+/* Custom section containers */
+.section-container {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 1rem 0;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Gradient backgrounds for sections */
+.gradient-bg {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 1rem 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -55,59 +241,180 @@ def main():
     st.title("🏗️ SWMM5 Force Mains Modeling App")
     st.markdown("**Comprehensive toolkit for modeling, analyzing, and optimizing force mains in SWMM5**")
     
-    # Sidebar navigation
-    st.sidebar.title("Navigation")
+    # Add a welcome section with better visual appeal
+    st.markdown("""
+    <div class="section-container">
+        <h3 style="color: #374151; margin-bottom: 1rem;">🚀 Welcome to the Advanced Force Main Modeling Suite</h3>
+        <p style="color: #6b7280; margin-bottom: 0;">
+            This comprehensive application provides professional-grade tools for hydraulic analysis, 
+            network design, and optimization of force main systems in both SWMM5 and EPANET environments.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Enhanced sidebar navigation with better styling
+    st.sidebar.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        padding: 1.5rem 1rem; 
+        margin: -1rem -1rem 2rem -1rem; 
+        text-align: center;
+        border-radius: 0 0 15px 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    ">
+        <h2 style="color: white; margin: 0; font-weight: 700; font-size: 1.5rem;">🔧 Navigation</h2>
+        <p style="color: rgba(255,255,255,0.9); font-size: 0.9rem; margin: 0.5rem 0 0 0;">Choose your modeling tool</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Custom styling for the selectbox
+    st.sidebar.markdown("""
+    <style>
+    .stSelectbox > label {
+        font-weight: 600 !important;
+        color: #374151 !important;
+        font-size: 1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Enhanced selectbox styling */
+    [data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div {
+        background: white !important;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div:hover {
+        border-color: #667eea !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    /* Dropdown options styling */
+    [data-testid="stSidebar"] [data-testid="stSelectbox"] div[role="option"] {
+        padding: 0.75rem 1rem !important;
+        font-size: 0.95rem !important;
+        border-bottom: 1px solid #f3f4f6 !important;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stSelectbox"] div[role="option"]:hover {
+        background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     page = st.sidebar.selectbox(
-        "Select Tool",
+        "🎯 Select Tool",
         [
-            "Force Main Designer",
-            "Friction Loss Calculator", 
-            "Network Analyzer",
-            "SWMM Input Generator",
-            "EPANET Input Generator",
-            "Results Visualizer",
-            "EPANET vs SWMM5 Comparison",
-            "Troubleshooting Assistant"
-        ]
+            "🏗️ Force Main Designer",
+            "📊 Friction Loss Calculator", 
+            "🔗 Network Analyzer",
+            "📝 SWMM Input Generator",
+            "📄 EPANET Input Generator",
+            "📈 Results Visualizer",
+            "⚖️ EPANET vs SWMM5 Comparison",
+            "🔧 Troubleshooting Assistant"
+        ],
+        help="Select a modeling tool from the dropdown menu"
     )
     
-    if page == "Force Main Designer":
+    # Add tool descriptions in sidebar
+    tool_descriptions = {
+        "🏗️ Force Main Designer": "Interactive tool for sizing and configuring force mains with real-time hydraulic calculations",
+        "📊 Friction Loss Calculator": "Compare Hazen-Williams vs Darcy-Weisbach friction loss methods with visualization",
+        "🔗 Network Analyzer": "Analyze complex force main networks with multiple branches and pumps",
+        "📝 SWMM Input Generator": "Generate properly formatted SWMM5 input files for force main systems",
+        "📄 EPANET Input Generator": "Create EPANET-compatible input files with pump curves and system components",
+        "📈 Results Visualizer": "Visualize and analyze simulation results with interactive plots and charts",
+        "⚖️ EPANET vs SWMM5 Comparison": "Compare modeling approaches and results between SWMM5 and EPANET",
+        "🔧 Troubleshooting Assistant": "Diagnose and resolve common force main modeling issues"
+    }
+    
+    if page in tool_descriptions:
+        st.sidebar.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); 
+            padding: 1.25rem; 
+            border-radius: 12px; 
+            margin-top: 1.5rem;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        ">
+            <h4 style="color: #374151; margin: 0 0 0.5rem 0; font-size: 0.9rem; font-weight: 600;">📋 Tool Description</h4>
+            <p style="color: #475569; font-size: 0.85rem; margin: 0; line-height: 1.5; font-style: italic;">
+                {tool_descriptions[page]}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Add a footer to the sidebar with responsive positioning
+    st.sidebar.markdown("""
+    <div style="
+        position: static;
+        margin-top: 3rem;
+        background: rgba(255,255,255,0.9); 
+        padding: 0.75rem; 
+        border-radius: 8px; 
+        text-align: center;
+        backdrop-filter: blur(5px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    ">
+        <p style="color: #6b7280; font-size: 0.75rem; margin: 0;">
+            💡 SWMM5 Force Main Modeling v1.0
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if page == "🏗️ Force Main Designer":
         force_main_designer()
-    elif page == "Friction Loss Calculator":
+    elif page == "📊 Friction Loss Calculator":
         friction_loss_calculator()
-    elif page == "Network Analyzer":
+    elif page == "🔗 Network Analyzer":
         network_analyzer()
-    elif page == "SWMM Input Generator":
+    elif page == "📝 SWMM Input Generator":
         swmm_input_generator()
-    elif page == "EPANET Input Generator":
+    elif page == "📄 EPANET Input Generator":
         epanet_input_generator()
-    elif page == "Results Visualizer":
+    elif page == "📈 Results Visualizer":
         results_visualizer()
-    elif page == "EPANET vs SWMM5 Comparison":
+    elif page == "⚖️ EPANET vs SWMM5 Comparison":
         epanet_swmm_comparison()
-    elif page == "Troubleshooting Assistant":
+    elif page == "🔧 Troubleshooting Assistant":
         troubleshooting_assistant()
 
 def force_main_designer():
     st.header("🔧 Force Main Designer")
-    st.markdown("Interactive tool for sizing and configuring force mains")
+    st.markdown("Interactive tool for sizing and configuring force mains with real-time hydraulic analysis")
+    
+    # Add status indicator
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 0.75rem 1rem; border-radius: 8px; border-left: 4px solid #10b981; margin-bottom: 1.5rem;">
+        <span style="color: #065f46; font-weight: 600;">🟢 System Ready</span>
+        <span style="color: #047857; margin-left: 0.5rem;">All hydraulic calculation modules loaded</span>
+    </div>
+    """, unsafe_allow_html=True)
     
     calc = ForceMainCalculator()
     
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1, 1], gap="large")
     
     with col1:
-        st.subheader("System Parameters")
+        st.markdown("""
+        <div class="section-container">
+            <h3 style="color: #374151; margin-bottom: 1.5rem;">⚙️ System Parameters</h3>
+        """, unsafe_allow_html=True)
         
-        # Flow parameters
-        flow_rate = st.number_input("Flow Rate (m³/s)", min_value=0.001, max_value=10.0, value=0.1, step=0.01)
-        pipe_diameter = st.number_input("Pipe Diameter (m)", min_value=0.1, max_value=3.0, value=0.3, step=0.05)
-        pipe_length = st.number_input("Pipe Length (m)", min_value=10.0, max_value=10000.0, value=1000.0, step=50.0)
+        # Flow parameters section
+        st.markdown("**🌊 Flow Parameters**")
+        flow_rate = st.number_input("Flow Rate (m³/s)", min_value=0.001, max_value=10.0, value=0.1, step=0.01, help="Design flow rate for the force main system")
+        pipe_diameter = st.number_input("Pipe Diameter (m)", min_value=0.1, max_value=3.0, value=0.3, step=0.05, help="Internal diameter of the force main pipe")
+        pipe_length = st.number_input("Pipe Length (m)", min_value=10.0, max_value=10000.0, value=1000.0, step=50.0, help="Total length of the force main from pump to discharge point")
         
-        # Material properties
+        st.markdown("**🔧 Material Properties**")
         material = st.selectbox(
             "Pipe Material",
-            ["PVC", "Ductile Iron", "HDPE", "Steel", "Cast Iron"]
+            ["PVC", "Ductile Iron", "HDPE", "Steel", "Cast Iron"],
+            help="Select the pipe material to automatically load roughness and C-factor values"
         )
         
         # Load material properties
@@ -131,14 +438,18 @@ def force_main_designer():
             format="%.3f"
         )
         
-        # Elevation data
-        st.subheader("Elevation Profile")
-        upstream_elev = st.number_input("Upstream Invert (m)", value=100.0, step=0.1)
-        downstream_elev = st.number_input("Downstream Invert (m)", value=110.0, step=0.1)
-        pump_head = st.number_input("Available Pump Head (m)", min_value=5.0, max_value=200.0, value=50.0, step=1.0)
+        st.markdown("**📍 Elevation Profile**")
+        upstream_elev = st.number_input("Upstream Invert (m)", value=100.0, step=0.1, help="Elevation of the wet well invert")
+        downstream_elev = st.number_input("Downstream Invert (m)", value=110.0, step=0.1, help="Elevation of the discharge point")
+        pump_head = st.number_input("Available Pump Head (m)", min_value=5.0, max_value=200.0, value=50.0, step=1.0, help="Total dynamic head available from the pump")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     
     with col2:
-        st.subheader("Hydraulic Analysis Results")
+        st.markdown("""
+        <div class="section-container">
+            <h3 style="color: #374151; margin-bottom: 1.5rem;">📋 Hydraulic Analysis Results</h3>
+        """, unsafe_allow_html=True)
         
         # Calculate hydraulic parameters
         area = np.pi * pipe_diameter**2 / 4
@@ -153,26 +464,29 @@ def force_main_designer():
         hw_full_flow, hw_surplus = calc.check_full_flow_condition(pump_head, static_head, hw_loss)
         dw_full_flow, dw_surplus = calc.check_full_flow_condition(pump_head, static_head, dw_loss)
         
-        # Display results
-        st.metric("Pipe Velocity", f"{velocity:.2f} m/s")
-        st.metric("Static Head", f"{static_head:.2f} m")
+        # Display basic results with enhanced styling
+        col_vel, col_head = st.columns(2)
+        with col_vel:
+            st.metric("🌊 Pipe Velocity", f"{velocity:.2f} m/s", help="Flow velocity in the pipe")
+        with col_head:
+            st.metric("📊 Static Head", f"{static_head:.2f} m", help="Elevation difference")
         
-        st.write("**Friction Loss Comparison:**")
+        st.markdown("**⚖️ Friction Loss Comparison**")
         col2a, col2b = st.columns(2)
         
         with col2a:
-            st.metric("Hazen-Williams Loss", f"{hw_loss:.2f} m")
+            st.metric("🔵 Hazen-Williams Loss", f"{hw_loss:.2f} m", help="Head loss using Hazen-Williams equation")
             if hw_full_flow:
-                st.success(f"✅ Full Flow (Surplus: {hw_surplus:.2f} m)")
+                st.success(f"✅ Full Flow Achieved\nSurplus: {hw_surplus:.2f} m")
             else:
-                st.error(f"❌ Insufficient Head (Deficit: {abs(hw_surplus):.2f} m)")
+                st.error(f"❌ Insufficient Head\nDeficit: {abs(hw_surplus):.2f} m")
         
         with col2b:
-            st.metric("Darcy-Weisbach Loss", f"{dw_loss:.2f} m")
+            st.metric("🔴 Darcy-Weisbach Loss", f"{dw_loss:.2f} m", help="Head loss using Darcy-Weisbach equation")
             if dw_full_flow:
-                st.success(f"✅ Full Flow (Surplus: {dw_surplus:.2f} m)")
+                st.success(f"✅ Full Flow Achieved\nSurplus: {dw_surplus:.2f} m")
             else:
-                st.error(f"❌ Insufficient Head (Deficit: {abs(dw_surplus):.2f} m)")
+                st.error(f"❌ Insufficient Head\nDeficit: {abs(dw_surplus):.2f} m")
         
         # Velocity check
         if velocity < 0.6:
@@ -182,30 +496,56 @@ def force_main_designer():
         else:
             st.success("✅ Velocity within acceptable range")
         
-        # System efficiency
+        # System efficiency and summary
         total_head_hw = static_head + hw_loss
         efficiency_hw = (total_head_hw / pump_head) * 100 if pump_head > 0 else 0
-        st.metric("System Efficiency (H-W)", f"{efficiency_hw:.1f}%")
+        
+        st.markdown("**📈 System Performance**")
+        col_eff1, col_eff2 = st.columns(2)
+        with col_eff1:
+            st.metric("⚡ System Efficiency (H-W)", f"{efficiency_hw:.1f}%", help="Percentage of pump head utilized")
+        with col_eff2:
+            total_head_dw = static_head + dw_loss
+            efficiency_dw = (total_head_dw / pump_head) * 100 if pump_head > 0 else 0
+            st.metric("⚡ System Efficiency (D-W)", f"{efficiency_dw:.1f}%", help="Percentage of pump head utilized")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
 def friction_loss_calculator():
     st.header("📊 Friction Loss Calculator")
-    st.markdown("Compare Hazen-Williams vs Darcy-Weisbach friction loss methods")
+    st.markdown("Compare Hazen-Williams vs Darcy-Weisbach friction loss methods with interactive visualization")
+    
+    # Add analysis status indicator
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 0.75rem 1rem; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 1.5rem;">
+        <span style="color: #92400e; font-weight: 600;">📈 Analysis Mode</span>
+        <span style="color: #b45309; margin-left: 0.5rem;">Interactive comparison of friction loss methods</span>
+    </div>
+    """, unsafe_allow_html=True)
     
     calc = ForceMainCalculator()
     
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([1, 2], gap="large")
     
     with col1:
-        st.subheader("Input Parameters")
+        st.markdown("""
+        <div class="section-container">
+            <h3 style="color: #374151; margin-bottom: 1.5rem;">⚙️ Input Parameters</h3>
+        """, unsafe_allow_html=True)
         
-        pipe_diameter = st.slider("Pipe Diameter (m)", 0.1, 2.0, 0.3, 0.05)
-        pipe_length = st.number_input("Pipe Length (m)", min_value=100, max_value=5000, value=1000, step=100)
-        hazen_williams_c = st.slider("Hazen-Williams C", 80, 150, 120, 5)
-        roughness_mm = st.slider("Absolute Roughness (mm)", 0.01, 5.0, 0.15, 0.01)
+        st.markdown("**🔧 Pipe Configuration**")
+        pipe_diameter = st.slider("Pipe Diameter (m)", 0.1, 2.0, 0.3, 0.05, help="Internal diameter of the pipe")
+        pipe_length = st.number_input("Pipe Length (m)", min_value=100, max_value=5000, value=1000, step=100, help="Total length of the pipe segment")
         
-        # Flow rate range for comparison
-        min_flow = st.number_input("Minimum Flow (m³/s)", min_value=0.01, max_value=1.0, value=0.05, step=0.01)
-        max_flow = st.number_input("Maximum Flow (m³/s)", min_value=0.1, max_value=5.0, value=0.5, step=0.05)
+        st.markdown("**📏 Friction Parameters**")
+        hazen_williams_c = st.slider("Hazen-Williams C", 80, 150, 120, 5, help="Roughness coefficient for H-W equation")
+        roughness_mm = st.slider("Absolute Roughness (mm)", 0.01, 5.0, 0.15, 0.01, help="Surface roughness for Darcy-Weisbach")
+        
+        st.markdown("**🌊 Flow Range Analysis**")
+        min_flow = st.number_input("Minimum Flow (m³/s)", min_value=0.01, max_value=1.0, value=0.05, step=0.01, help="Lower bound for flow analysis")
+        max_flow = st.number_input("Maximum Flow (m³/s)", min_value=0.1, max_value=5.0, value=0.5, step=0.05, help="Upper bound for flow analysis")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     
     with col2:
         st.subheader("Friction Loss Comparison")
