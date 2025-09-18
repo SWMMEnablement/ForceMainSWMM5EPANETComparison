@@ -20,6 +20,37 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS to make selectboxes bigger
+st.markdown("""
+<style>
+/* Make selectbox dropdown taller */
+div[data-baseweb="select"] > div:first-child {
+    max-height: 400px !important;
+}
+
+/* Alternative selector for selectbox dropdown */
+.stSelectbox > div > div > div {
+    max-height: 400px !important;
+}
+
+/* Make the dropdown list container bigger */
+div[role="listbox"] {
+    max-height: 400px !important;
+}
+
+/* Ensure scrollable area is properly sized */
+div[data-baseweb="menu"] {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+}
+
+/* Additional styling for better visibility */
+div[data-testid="stSelectbox"] > div:first-child {
+    min-height: 40px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 def main():
     st.title("🏗️ SWMM5 Force Mains Modeling App")
     st.markdown("**Comprehensive toolkit for modeling, analyzing, and optimizing force mains in SWMM5**")
