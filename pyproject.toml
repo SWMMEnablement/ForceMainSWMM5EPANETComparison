@@ -1,7 +1,7 @@
 [project]
-name = "repl-nix-workspace"
+name = "ForceMain_SWMM5_EPANET_Comparison"
 version = "0.1.0"
-description = "Add your description here"
+description = "Comprehensive toolkit for modeling, analyzing, and comparing force mains in SWMM5 and EPANET"
 requires-python = ">=3.11"
 dependencies = [
     "matplotlib>=3.10.6",

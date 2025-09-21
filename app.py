@@ -14,7 +14,7 @@ import os
 
 # Page configuration
 st.set_page_config(
-    page_title="SWMM5 Force Mains Modeling App",
+    page_title="ForceMain SWMM5 EPANET Comparison",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded"
