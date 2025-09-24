@@ -12,7 +12,6 @@ class EPANETInputGenerator:
         self.options = {
             'UNITS': 'SI',
             'HEADLOSS': 'H-W',
-            'HYDRAULICS': 'USE',
             'QUALITY': 'NONE',
             'VISCOSITY': 1.0,
             'DIFFUSIVITY': 1.0,
