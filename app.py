@@ -762,7 +762,31 @@ def network_analyzer():
         # Network analysis results
         st.subheader("Analysis Results")
         
-        if st.button("Analyze Network"):
+        # Make the button more prominent
+        st.markdown("""
+        <style>
+        div.stButton > button:first-child {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 0.75rem 1.5rem !important;
+            font-weight: 600 !important;
+            font-size: 1.1rem !important;
+            width: 100% !important;
+            transition: all 0.2s ease-in-out !important;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3) !important;
+        }
+        
+        div.stButton > button:first-child:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔍 Analyze Network", key="analyze_network_btn", help="Click to analyze the network configuration and calculate hydraulic parameters"):
             # Simplified analysis
             total_length = sum(link["length"] for link in links_data)
             avg_diameter = np.mean([link["diameter"] for link in links_data]) if links_data else 0
