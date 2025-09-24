@@ -302,7 +302,7 @@ class SWMMInputGenerator:
         content.append(";;-------------- ------------ ---------------- ---------- ---------- ---------- ---------- ----------")
         
         # Force main cross-section
-        content.append(f"{fm['id']:<16} {'FORCE_MAIN':<12} {fm['diameter']:<16.3f} {0:<10.3f} {0:<10.3f} {0:<10.3f} {1:<10} {0:<10}")
+        content.append(f"{fm['id']:<16} {'FORCE_MAIN':<12} {fm['diameter']:<16.3f} {fm['roughness']:<10.3f} {0:<10.3f} {0:<10.3f} {1:<10} {0:<10}")
         
         # Gravity conduit cross-section
         gravity_diameter = max(0.2, fm['diameter'] * 1.5)  # Size appropriately
@@ -462,7 +462,7 @@ class SWMMInputGenerator:
         
         for link_id, link in links.items():
             if link['type'] == 'force_main':
-                content.append(f"{link_id:<16} {'FORCE_MAIN':<12} {link['diameter']:<16.3f} {0:<10.3f} {0:<10.3f} {0:<10.3f} {1:<10} {0:<10}")
+                content.append(f"{link_id:<16} {'FORCE_MAIN':<12} {link['diameter']:<16.3f} {link['roughness']:<10.3f} {0:<10.3f} {0:<10.3f} {1:<10} {0:<10}")
         content.append("")
         
         # Pump curves
