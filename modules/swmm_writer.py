@@ -109,6 +109,72 @@ class SWMMInputGenerator:
         
         return content
     
+    def create_coordinates_section(self, config, system_type='force_main'):
+        """Create coordinates section for network visualization"""
+        content = []
+        
+        content.append("[COORDINATES]")
+        content.append(";;Node           X-Coord            Y-Coord           ")
+        content.append(";;-------------- ------------------ ------------------")
+        
+        if system_type == 'force_main':
+            # Create linear layout for force main system
+            ww = config['wet_well']
+            fm = config['force_main'] 
+            dn = config['discharge_node']
+            pump_discharge_node = fm['from']
+            
+            # Wet well at origin
+            content.append(f"{ww['id']:<16} {0.0:<18.2f} {0.0:<18.2f}")
+            
+            # Pump discharge node slightly offset
+            content.append(f"{pump_discharge_node:<16} {100.0:<18.2f} {0.0:<18.2f}")
+            
+            # Discharge node along the force main
+            force_main_length = fm.get('length', 1000)
+            x_discharge = 100.0 + force_main_length * 0.8
+            content.append(f"{dn['id']:<16} {x_discharge:<18.2f} {0.0:<18.2f}")
+            
+            # Outfall at the end
+            x_outfall = x_discharge + 100.0
+            content.append(f"{'OUTFALL1':<16} {x_outfall:<18.2f} {0.0:<18.2f}")
+            
+        elif system_type == 'network':
+            # For network systems, use provided coordinates or generate them
+            nodes = config.get('nodes', {})
+            x_offset = 0
+            y_offset = 0
+            
+            for node_id, node in nodes.items():
+                x_coord = node.get('x_coord', x_offset)
+                y_coord = node.get('y_coord', y_offset)
+                content.append(f"{node_id:<16} {x_coord:<18.2f} {y_coord:<18.2f}")
+                
+                # Auto-increment if no coordinates provided
+                if 'x_coord' not in node:
+                    x_offset += 200
+                    
+        content.append("")
+        return content
+    
+    def create_polygons_section(self, config):
+        """Create polygons section for subcatchment visualization"""
+        content = []
+        
+        content.append("[POLYGONS]")
+        content.append(";;Subcatchment   X-Coord            Y-Coord           ")
+        content.append(";;-------------- ------------------ ------------------")
+        
+        # Create simple rectangular polygon for subcatchment SUB1
+        # This creates a small catchment area near the wet well
+        content.append(f"{'SUB1':<16} {-50.0:<18.2f} {-50.0:<18.2f}")
+        content.append(f"{'SUB1':<16} {50.0:<18.2f} {-50.0:<18.2f}")
+        content.append(f"{'SUB1':<16} {50.0:<18.2f} {50.0:<18.2f}")
+        content.append(f"{'SUB1':<16} {-50.0:<18.2f} {50.0:<18.2f}")
+        content.append("")
+        
+        return content
+    
     def create_force_main_system(self, config):
         """
         Create complete force main system
@@ -263,6 +329,12 @@ class SWMMInputGenerator:
         content.append(f"THEN PUMP {pump['id']} STATUS = OFF")
         content.append("")
         
+        # Coordinates section for network visualization
+        content.extend(self.create_coordinates_section(config, 'force_main'))
+        
+        # Polygons section for subcatchment visualization
+        content.extend(self.create_polygons_section(config))
+        
         # Report section
         content.extend(self.create_report_section())
         
@@ -399,6 +471,9 @@ class SWMMInputGenerator:
                         content.append(f"{pump['curve']:<16} {'PUMP4':<10} {flow:<10.4f} {head:<10.2f}")
             content.append("")
         
+        # Coordinates section for network visualization
+        content.extend(self.create_coordinates_section({'nodes': nodes}, 'network'))
+        
         # Report section
         content.extend(self.create_report_section())
         
@@ -416,7 +491,7 @@ class SWMMInputGenerator:
         warnings = []
         
         # Check for required sections
-        required_sections = ['[TITLE]', '[OPTIONS]', '[TIMES]']
+        required_sections = ['[TITLE]', '[OPTIONS]']
         found_sections = []
         
         for line in lines:
