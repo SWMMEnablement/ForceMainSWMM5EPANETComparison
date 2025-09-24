@@ -1117,39 +1117,36 @@ def epanet_input_generator():
         st.subheader("Generate EPANET File")
         
         if st.button("Generate EPANET Input"):
-            # Create configuration
+            # Create configuration that matches EPANET writer expected structure
             config = {
                 'project_title': project_title,
-                'flow_units': flow_units,
-                'tank': {
+                'wet_well': {
                     'id': tank_id,
                     'elevation': tank_elevation,
-                    'init_level': tank_init_level,
-                    'min_level': tank_min_level,
-                    'max_level': tank_max_level,
-                    'diameter': tank_diameter
+                    'demand': -(junction_demand/1000),  # Convert L/s to m³/s and negative for supply
+                    'init_depth': tank_init_level,
+                    'max_depth': tank_max_level,
+                    'area': np.pi * (tank_diameter/2)**2
                 },
                 'pump': {
                     'id': pump_id,
                     'from': tank_id,
-                    'to': junction_id,
-                    'pattern': pump_pattern,
-                    'curve_data': pump_curve_data
+                    'to': f"{pump_id}_discharge",  # Intermediate node
+                    'curve_data': [(flow/1000, head) for flow, head in pump_curve_data]  # Convert L/s to m³/s
                 },
-                'pipe': {
+                'force_main': {
                     'id': pipe_id,
-                    'from': tank_id,
+                    'from': f"{pump_id}_discharge",
                     'to': junction_id,
-                    'diameter': pipe_diameter,
+                    'diameter': pipe_diameter/1000,  # Convert mm to m
                     'length': pipe_length,
                     'roughness': pipe_roughness
                 },
-                'junction': {
+                'discharge_node': {
                     'id': junction_id,
                     'elevation': junction_elevation,
-                    'demand': junction_demand
-                },
-                'time_pattern': time_pattern
+                    'demand': junction_demand/1000  # Convert L/s to m³/s
+                }
             }
             
             # Generate EPANET file

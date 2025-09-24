@@ -80,27 +80,13 @@ class SWMMInputGenerator:
         return content
     
     def create_time_sections(self):
-        """Create time-related sections"""
+        """Create time-related sections using correct SWMM5 format"""
         content = []
         
-        content.append("[REPORT]")
-        content.append(";;Reporting Options")
-        content.append("INPUT      NO")
-        content.append("CONTROLS   NO")
-        content.append("SUBCATCHMENTS ALL")
-        content.append("NODES ALL")
-        content.append("LINKS ALL")
-        content.append("")
-        
         content.append("[TIMES]")
-        content.append(f"REPORT_STEP      {self.report_step}")
-        content.append(f"WET_STEP         {self.wet_step}")
-        content.append(f"DRY_STEP         {self.dry_step}")
-        content.append(f"ROUTING_STEP     {self.routing_step}")
-        content.append(f"RULE_STEP        00:00:00")
-        content.append("")
+        content.append(";;Start           End             Dry Days  Report    Sweep")
         content.append(f"START_DATE       {self.start_date}")
-        content.append(f"START_TIME       {self.start_time}")
+        content.append(f"START_TIME       {self.start_time}")  
         content.append(f"REPORT_START_DATE {self.start_date}")
         content.append(f"REPORT_START_TIME {self.start_time}")
         content.append(f"END_DATE         {self.end_date}")
@@ -108,6 +94,20 @@ class SWMMInputGenerator:
         content.append(f"SWEEP_START      01/01")
         content.append(f"SWEEP_END        12/31")
         content.append(f"DRY_DAYS         {self.dry_days}")
+        content.append(f"REPORT_STEP      {self.report_step}")
+        content.append(f"WET_STEP         {self.wet_step}")
+        content.append(f"DRY_STEP         {self.dry_step}")
+        content.append(f"ROUTING_STEP     {self.routing_step}")
+        content.append(f"RULE_STEP        00:00:00")
+        content.append("")
+        
+        content.append("[REPORT]")
+        content.append(";;Reporting Options")
+        content.append("INPUT      NO")
+        content.append("CONTROLS   NO")
+        content.append("SUBCATCHMENTS ALL")  
+        content.append("NODES ALL")
+        content.append("LINKS ALL")
         content.append("")
         
         return content
