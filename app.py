@@ -20,11 +20,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Enhanced Custom CSS for better visual design
-st.markdown("""
+# Enhanced Custom CSS for better visual design - cached for performance
+@st.cache_resource
+def load_custom_css():
+    return """
 <style>
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Use system fonts instead of Google Fonts for faster loading */
 
 /* Global Styling */
 .block-container {
@@ -33,7 +34,7 @@ st.markdown("""
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif !important;
+    font-family: system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif !important;
     color: #1f2937 !important;
 }
 
@@ -235,7 +236,12 @@ div[data-testid="stPlotlyChart"] {
     margin: 1rem 0;
 }
 </style>
-""", unsafe_allow_html=True)
+"""
+
+# Apply cached CSS only once per session
+if "css_loaded" not in st.session_state:
+    st.markdown(load_custom_css(), unsafe_allow_html=True)
+    st.session_state.css_loaded = True
 
 def main():
     st.title("🏗️ SWMM5 Force Mains Modeling App")
@@ -313,7 +319,8 @@ def main():
             "📄 EPANET Input Generator",
             "📈 Results Visualizer",
             "⚖️ EPANET vs SWMM5 Comparison",
-            "🔧 Troubleshooting Assistant"
+            "🔧 Troubleshooting Assistant",
+            "💻 Source Code"
         ],
         help="Select a modeling tool from the dropdown menu"
     )
@@ -327,7 +334,8 @@ def main():
         "📄 EPANET Input Generator": "Create EPANET-compatible input files with pump curves and system components",
         "📈 Results Visualizer": "Visualize and analyze simulation results with interactive plots and charts",
         "⚖️ EPANET vs SWMM5 Comparison": "Compare modeling approaches and results between SWMM5 and EPANET",
-        "🔧 Troubleshooting Assistant": "Diagnose and resolve common force main modeling issues"
+        "🔧 Troubleshooting Assistant": "Diagnose and resolve common force main modeling issues",
+        "💻 Source Code": "Explore the application's architecture, file structure, and implementation details"
     }
     
     if page in tool_descriptions:
@@ -381,6 +389,8 @@ def main():
         epanet_swmm_comparison()
     elif page == "🔧 Troubleshooting Assistant":
         troubleshooting_assistant()
+    elif page == "💻 Source Code":
+        source_code_explorer()
 
 def force_main_designer():
     st.header("🔧 Force Main Designer")
@@ -1944,6 +1954,138 @@ FORCE_MAIN_EQUATION   D-W
             st.write("2. 📊 Review pump selection - consider variable speed drive")
             st.write("3. 🔍 Verify pump curve data matches actual installation")
             st.write("4. 📋 Schedule quarterly performance monitoring")
+
+def source_code_explorer():
+    st.header("💻 Source Code Explorer")
+    st.markdown("Explore the application's architecture, file structure, and implementation details")
+    
+    # Add status indicator
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); padding: 0.75rem 1rem; border-radius: 8px; border-left: 4px solid #6366f1; margin-bottom: 1.5rem;">
+        <span style="color: #312e81; font-weight: 600;">📁 Codebase Overview</span>
+        <span style="color: #3730a3; margin-left: 0.5rem;">Interactive exploration of application structure</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown("### 🏗️ Application Architecture")
+        
+        st.markdown("""
+        **Main Application:**
+        - `app.py` - Main Streamlit application (1,960+ lines)
+        - Multi-page interface with sidebar navigation
+        - Cached CSS for performance optimization
+        
+        **Core Modules:**
+        - `modules/calculator.py` - Hydraulic calculations (H-W, D-W equations)
+        - `modules/network.py` - Network analysis and Hardy Cross method
+        - `modules/visualizer.py` - Plotly-based visualization engine
+        - `modules/swmm_writer.py` - SWMM5 input file generation
+        - `modules/epanet_writer.py` - EPANET input file generation
+        - `modules/validator.py` - System diagnostics and troubleshooting
+        """)
+        
+        st.markdown("### 📊 Key Features")
+        st.markdown("""
+        1. **Force Main Designer** - Interactive sizing tool
+        2. **Friction Loss Calculator** - H-W vs D-W comparison
+        3. **Network Analyzer** - Multi-branch system analysis
+        4. **Input Generators** - SWMM5 & EPANET file creation
+        5. **Results Visualizer** - Hydraulic grade line plots
+        6. **Comparison Tool** - SWMM5 vs EPANET analysis
+        7. **Troubleshooting** - Diagnostic assistant
+        """)
+        
+    with col2:
+        st.markdown("### 📁 File Structure")
+        
+        # Create a simple file tree visualization
+        file_structure = {
+            "📁 Root Directory": {
+                "app.py": "Main Streamlit application",
+                "📁 modules/": {
+                    "calculator.py": "Hydraulic calculations engine",
+                    "network.py": "Network analysis algorithms", 
+                    "visualizer.py": "Plotly visualization tools",
+                    "swmm_writer.py": "SWMM5 input file generator",
+                    "epanet_writer.py": "EPANET input file generator",
+                    "validator.py": "System diagnostics tools"
+                },
+                "📁 data/": {
+                    "pipe_materials.csv": "Material properties database"
+                },
+                "📁 .streamlit/": {
+                    "config.toml": "Streamlit configuration"
+                }
+            }
+        }
+        
+        def display_tree(tree, level=0):
+            for key, value in tree.items():
+                indent = "  " * level
+                if isinstance(value, dict):
+                    st.markdown(f"{indent}**{key}**")
+                    display_tree(value, level + 1)
+                else:
+                    st.markdown(f"{indent}- `{key}` - {value}")
+        
+        display_tree(file_structure)
+    
+    # Technical details section
+    st.markdown("### ⚙️ Technical Implementation")
+    
+    tab1, tab2, tab3 = st.tabs(["Dependencies", "Performance", "Architecture"])
+    
+    with tab1:
+        st.markdown("""
+        **Core Dependencies:**
+        - `streamlit` - Web application framework
+        - `numpy` - Numerical computations
+        - `pandas` - Data manipulation and CSV handling
+        - `plotly` - Interactive visualizations
+        - `scipy` - Scientific computing and optimization
+        - `matplotlib` - Static plotting (backup)
+        
+        **Key Libraries Used:**
+        - SciPy.optimize for friction factor calculations
+        - NumPy for hydraulic computations
+        - Plotly for interactive network diagrams
+        - Pandas for material properties and results
+        """)
+    
+    with tab2:
+        st.markdown("""
+        **Performance Optimizations:**
+        - CSS loading cached with `@st.cache_resource`
+        - Session state management for one-time loading
+        - System fonts instead of Google Fonts import
+        - Efficient data structures for calculations
+        - Lazy loading of heavy computations
+        
+        **Current Performance:**
+        - Fast initial load (optimized CSS)
+        - Responsive interactive elements
+        - Real-time calculation updates
+        - Efficient memory usage
+        """)
+    
+    with tab3:
+        st.markdown("""
+        **Design Patterns:**
+        - Modular architecture with separated concerns
+        - Calculator classes for reusable computations
+        - Generator classes for file output
+        - Visualizer classes for consistent plotting
+        
+        **Data Flow:**
+        1. User input via Streamlit widgets
+        2. Data processing in module classes
+        3. Calculations using scientific libraries
+        4. Results visualization with Plotly
+        5. File generation for external software
+        """)
 
 if __name__ == "__main__":
     main()
