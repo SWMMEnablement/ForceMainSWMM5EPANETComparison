@@ -772,12 +772,14 @@ def network_analyzer():
         # Network analysis results
         st.subheader("Analysis Results")
         
-        # Make the button more prominent
+        # Target the specific analyze network button with maximum CSS specificity
         st.markdown("""
         <style>
-        div.stButton > button:first-child {
+        /* Target the specific analyze network button using data-testid */
+        button[data-testid="stBaseButton-secondary"] {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-            color: white !important;
+            background-image: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            color: #ffffff !important;
             border: none !important;
             border-radius: 8px !important;
             padding: 0.75rem 1.5rem !important;
@@ -786,12 +788,26 @@ def network_analyzer():
             width: 100% !important;
             transition: all 0.2s ease-in-out !important;
             box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3) !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
         }
         
-        div.stButton > button:first-child:hover {
+        button[data-testid="stBaseButton-secondary"]:hover {
             background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+            background-image: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+            color: #ffffff !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4) !important;
+        }
+        
+        /* Target the text inside the analyze network button specifically */
+        button[data-testid="stBaseButton-secondary"] p {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        button[data-testid="stBaseButton-secondary"] div {
+            color: #ffffff !important;
         }
         </style>
         """, unsafe_allow_html=True)
