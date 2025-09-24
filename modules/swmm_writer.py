@@ -314,8 +314,14 @@ class SWMMInputGenerator:
         content.append(";;Name           Type       X-Value    Y-Value   ")
         content.append(";;-------------- ---------- ---------- ----------")
         
-        for flow, head in pump['curve_data']:
-            content.append(f"{pump['curve']:<16} {'PUMP4':<10} {flow:<10.4f} {head:<10.2f}")
+        # First line has curve name and pump type
+        if pump['curve_data']:
+            flow, head = pump['curve_data'][0]
+            content.append(f"{pump['curve']:<16} {'Pump3':<10} {flow:<10.4f} {head:<10.2f}")
+            
+            # Subsequent lines have only curve name and values
+            for flow, head in pump['curve_data'][1:]:
+                content.append(f"{pump['curve']:<16} {'':<10} {flow:<10.4f} {head:<10.2f}")
         content.append("")
         
         # Controls section for pump operation
@@ -466,9 +472,14 @@ class SWMMInputGenerator:
             content.append(";;-------------- ---------- ---------- ----------")
             
             for pump_id, pump in pumps.items():
-                if 'curve_data' in pump:
-                    for flow, head in pump['curve_data']:
-                        content.append(f"{pump['curve']:<16} {'PUMP4':<10} {flow:<10.4f} {head:<10.2f}")
+                if 'curve_data' in pump and pump['curve_data']:
+                    # First line has curve name and pump type
+                    flow, head = pump['curve_data'][0]
+                    content.append(f"{pump['curve']:<16} {'Pump3':<10} {flow:<10.4f} {head:<10.2f}")
+                    
+                    # Subsequent lines have only curve name and values
+                    for flow, head in pump['curve_data'][1:]:
+                        content.append(f"{pump['curve']:<16} {'':<10} {flow:<10.4f} {head:<10.2f}")
             content.append("")
         
         # Coordinates section for network visualization
