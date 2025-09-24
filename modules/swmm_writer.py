@@ -344,12 +344,7 @@ class SWMMInputGenerator:
         # Report section
         content.extend(self.create_report_section())
         
-        # Files section
-        content.append("[FILES]")
-        content.append(";;Interfacing Files")
-        content.append("USE HOTSTART \"\"")
-        content.append("SAVE HOTSTART \"\"")
-        content.append("")
+        # Files section removed to avoid hotstart file errors
         
         return "\n".join(content)
     
