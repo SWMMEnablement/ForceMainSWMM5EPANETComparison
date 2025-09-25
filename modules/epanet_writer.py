@@ -74,8 +74,9 @@ class EPANETInputGenerator:
         dn = config['discharge_node']
         pump = config['pump']
         
-        # Wet well as junction with negative demand (supply)
-        content.append(f" {ww['id']:<15} {ww['elevation']:<11.2f} {-abs(ww.get('demand', 0.1))*1000:<11.3f}                     ;")
+        # Wet well as junction with negative demand (supply) - use same flow as SWMM5 DWF
+        inflow_rate = pump.get('flow', 0.15)  # Same as SWMM5 DWF section
+        content.append(f" {ww['id']:<15} {ww['elevation']:<11.2f} {-abs(inflow_rate)*1000:<11.3f}                     ;")
         
         # Intermediate pump discharge node
         pump_discharge_node = pump['to']
@@ -130,9 +131,11 @@ class EPANETInputGenerator:
         content.append("[TAGS]")
         content.append("")
         
-        # Demands section
+        # Demands section - explicit demand entries to match SWMM5 DWF
         content.append("[DEMANDS]")
         content.append(";Junction        Demand      Pattern         Category")
+        # Wet well supply (negative demand = inflow)
+        content.append(f" {ww['id']:<15} {-abs(inflow_rate)*1000:<11.3f} CONSTANT         Inflow    ;")
         content.append("")
         
         # Status section
