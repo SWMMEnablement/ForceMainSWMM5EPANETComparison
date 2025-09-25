@@ -77,20 +77,7 @@ class SWMMInputGenerator:
         content.append("DRY_ONLY         NO")
         content.append("")
         
-        # Raingages section (minimal)
-        content.append("[RAINGAGES]")
-        content.append(";;Name           Format    Interval SCF      Source    ")
-        content.append(";;-------------- --------- ------ ------ ------------")
-        content.append("RG1              INTENSITY 1:00     1.0    TIMESERIES TS1")
-        content.append("")
-        
-        # Time series (minimal)
-        content.append("[TIMESERIES]")
-        content.append(";;Name           Date       Time       Value     ")
-        content.append(";;-------------- ---------- ---------- ----------")
-        content.append("TS1              1/1/2024   0:00       0.0")
-        content.append("TS1              1/2/2024   0:00       0.0")
-        content.append("")
+        # No raingages or timeseries needed for constant inflow
         
         return content
     
@@ -102,7 +89,7 @@ class SWMMInputGenerator:
         content.append(";;Reporting Options")
         content.append("INPUT      NO")
         content.append("CONTROLS   NO")
-        content.append("SUBCATCHMENTS ALL")  
+        content.append("SUBCATCHMENTS NONE")  
         content.append("NODES ALL")
         content.append("LINKS ALL")
         content.append("")
@@ -224,26 +211,15 @@ class SWMMInputGenerator:
         # Header sections
         content.extend(self.create_header_sections(config.get('project_title', self.title)))
         
-        # Subcatchments (minimal for wet well inflow)
-        content.append("[SUBCATCHMENTS]")
-        content.append(";;Name           Rain Gage        Outlet           Area     %Imperv  Width    %Slope   CurbLen  SnowPack        ")
-        content.append(";;-------------- ---------------- ---------------- -------- -------- -------- -------- -------- ----------------")
+        # DWF (Dry Weather Flow) for constant inflow to wet well
+        content.append("[DWF]")
+        content.append(";;Node           Constituent      Baseline   Pattern   ")
+        content.append(";;-------------- ---------------- ---------- ----------")
         ww = config['wet_well']
-        content.append(f"{'SUB1':<16} {'RG1':<16} {ww['id']:<16} {1.0:<8.2f} {100.0:<8.1f} {100.0:<8.1f} {0.5:<8.1f} {0:<8.1f}")
-        content.append("")
-        
-        # Subareas
-        content.append("[SUBAREAS]")
-        content.append(";;Subcatchment   N-Imperv   N-Perv     S-Imperv   S-Perv     PctZero    RouteTo    PctRouted ")
-        content.append(";;-------------- ---------- ---------- ---------- ---------- ---------- ---------- ----------")
-        content.append(f"{'SUB1':<16} {0.01:<10.2f} {0.1:<10.2f} {0.05:<10.2f} {0.05:<10.2f} {25.0:<10.1f} {'OUTLET':<10} {100.0:<10.1f}")
-        content.append("")
-        
-        # Infiltration
-        content.append("[INFILTRATION]")
-        content.append(";;Subcatchment   MaxRate    MinRate    Decay      DryTime    MaxInfil  ")
-        content.append(";;-------------- ---------- ---------- ---------- ---------- ----------")
-        content.append(f"{'SUB1':<16} {3.0:<10.1f} {0.5:<10.1f} {4.0:<10.1f} {7.0:<10.1f} {0.0:<10.1f}")
+        # Use pump flow rate as the constant inflow (or default value)
+        pump = config.get('pump', {})
+        inflow_rate = pump.get('flow', 0.15)  # Default 0.15 m³/s if not specified
+        content.append(f"{ww['id']:<16} {'FLOW':<16} {inflow_rate:<10.6f} {'':<10}")
         content.append("")
         
         # Junctions section
@@ -338,8 +314,7 @@ class SWMMInputGenerator:
         # Coordinates section for network visualization
         content.extend(self.create_coordinates_section(config, 'force_main'))
         
-        # Polygons section for subcatchment visualization
-        content.extend(self.create_polygons_section(config))
+        # No polygons section needed without subcatchments
         
         # Report section
         content.extend(self.create_report_section())
