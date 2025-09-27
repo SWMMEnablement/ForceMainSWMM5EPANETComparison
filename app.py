@@ -1167,12 +1167,13 @@ def epanet_input_generator():
         st.subheader("Generate EPANET File")
         
         if st.button("Generate EPANET Input"):
-            # Create configuration that matches EPANET writer expected structure
+            # Create configuration for realistic pump station model
             config = {
                 'project_title': project_title,
                 'wet_well': {
                     'id': tank_id,
                     'elevation': tank_elevation,
+                    'invert': tank_elevation,  # Tank base elevation  
                     'demand': -(junction_demand/1000),  # Convert L/s to m³/s and negative for supply
                     'init_depth': tank_init_level,
                     'max_depth': tank_max_level,
@@ -1182,7 +1183,10 @@ def epanet_input_generator():
                     'id': pump_id,
                     'from': tank_id,
                     'to': f"{pump_id}_discharge",  # Intermediate node
-                    'curve_data': [(flow/1000, head) for flow, head in pump_curve_data]  # Convert L/s to m³/s
+                    'curve_data': [(flow/1000, head) for flow, head in pump_curve_data],  # Convert L/s to m³/s
+                    'startup': tank_min_level + 1.0,  # Pump starts 1m above minimum level
+                    'shutoff': tank_min_level + 0.2,  # Pump stops just above minimum  
+                    'flow': junction_demand/1000  # Expected flow rate in m³/s
                 },
                 'force_main': {
                     'id': pipe_id,
