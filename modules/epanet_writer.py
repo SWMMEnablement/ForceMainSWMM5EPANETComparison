@@ -66,7 +66,7 @@ class EPANETInputGenerator:
         content.append("Force main system modeled in EPANET for comparison with SWMM5")
         content.append("")
         
-        # Junctions section - simplified for realistic pump station
+        # Junctions section - minimal junctions for pump discharge
         content.append("[JUNCTIONS]")
         content.append(";ID              Elev        Demand      Pattern         ;")
         
@@ -75,7 +75,9 @@ class EPANETInputGenerator:
         pump = config['pump']
         inflow_rate = pump.get('flow', 0.15)  # Same as SWMM5 DWF section
         
-        # No junctions needed - wet well is tank, discharge is reservoir
+        # Add pump discharge junction for proper connectivity
+        pump_discharge_elev = ww['invert'] + ww['max_depth'] + 5.0  # Above tank
+        content.append(f" {'PUMP_DISCH':<15} {pump_discharge_elev:<11.2f} {0:<11.3f}                     ;")
         content.append("")
         
         # Reservoirs section - single discharge reservoir for realistic pump station
@@ -95,18 +97,23 @@ class EPANETInputGenerator:
         content.append(f" {ww['id']:<15} {ww['invert']:<11.2f} {ww['init_depth']:<11.2f} {0.5:<11.2f} {ww['max_depth']:<11.2f} {tank_diameter:<11.2f} {0:<11.2f}        ;")
         content.append("")
         
-        # Pipes section - no pipes needed for pump to reservoir
+        # Pipes section - short connection from pump discharge to reservoir
         content.append("[PIPES]")
         content.append(";ID              Node1           Node2           Length      Diameter    Roughness   MinorLoss   Status")
+        
+        # Short pipe from pump discharge to reservoir
+        fm = config['force_main']
+        pipe_diam_mm = fm['diameter'] * 1000  # Convert m to mm
+        content.append(f" {'DISCHARGE_PIPE':<15} {'PUMP_DISCH':<15} {'DISCHARGE_RES':<15} {10.0:<11.2f} {pipe_diam_mm:<11.1f} {fm['roughness']:<11.3f} {0:<11.3f} Open  ;")
         content.append("")
         
-        # Pumps section - pump directly from tank to reservoir
+        # Pumps section - pump from tank to discharge junction
         content.append("[PUMPS]")
         content.append(";ID              Node1           Node2           Parameters")
         
         curve_id = f"CURVE_{pump['id']}"
-        # Pump from wet well tank to discharge reservoir
-        content.append(f" {pump['id']:<15} {ww['id']:<15} {'DISCHARGE_RES':<15} HEAD {curve_id}  ;")
+        # Pump from wet well tank to pump discharge junction
+        content.append(f" {pump['id']:<15} {ww['id']:<15} {'PUMP_DISCH':<15} HEAD {curve_id}  ;")
         content.append("")
         
         # Valves section (if needed for control)
@@ -216,10 +223,11 @@ class EPANETInputGenerator:
             content.append(f" {key:<18} {value}")
         content.append("")
         
-        # Coordinates section (simplified for tank-to-reservoir system)
+        # Coordinates section (tank-junction-reservoir system)
         content.append("[COORDINATES]")
         content.append(";Node            X-Coord         Y-Coord")
         content.append(f" {ww['id']:<15} {0:<15.2f} {ww['invert']:<15.2f}")
+        content.append(f" {'PUMP_DISCH':<15} {500:<15.2f} {pump_discharge_elev:<15.2f}")
         content.append(f" {'DISCHARGE_RES':<15} {1000:<15.2f} {dn['elevation']:<15.2f}")
         content.append("")
         
