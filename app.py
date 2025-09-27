@@ -1026,7 +1026,7 @@ def swmm_input_generator():
                 st.download_button(
                     label="Download EPANET .inp File",
                     data=epanet_content,
-                    file_name=f"{project_title.replace(' ', '_').lower()}_epanet.inp",
+                    file_name=f"{project_title.replace(' ', '_').lower()}_epanet.net",
                     mime="text/plain",
                     key="epanet_download"
                 )
@@ -1210,7 +1210,7 @@ def epanet_input_generator():
             st.download_button(
                 label="Download EPANET .inp File",
                 data=epanet_content,
-                file_name=f"{project_title.replace(' ', '_').lower()}.inp",
+                file_name=f"{project_title.replace(' ', '_').lower()}.net",
                 mime="text/plain"
             )
             

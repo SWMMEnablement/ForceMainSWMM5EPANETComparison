@@ -233,7 +233,8 @@ class SWMMInputGenerator:
         content.append("[OUTFALLS]")
         content.append(";;Name           Elevation  Type       Stage Data       Gated    Route To        ")
         content.append(";;-------------- ---------- ---------- ---------------- -------- ----------------")
-        outfall_elevation = dn['elevation'] + dn['max_depth'] + dn['surcharge_depth']
+        # Set outfall elevation lower than discharge node for gravity flow downhill
+        outfall_elevation = dn['elevation'] - 2.0  # 2 meters below discharge node for adequate slope
         content.append(f"{'OUTFALL1':<16} {outfall_elevation:<10.2f} {'FREE':<10} {'':<16} {'NO':<8} {'':<16}")
         content.append("")
         
