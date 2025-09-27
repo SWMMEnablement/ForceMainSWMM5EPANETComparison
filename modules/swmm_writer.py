@@ -238,7 +238,7 @@ class SWMMInputGenerator:
         content.append(f"{'OUTFALL1':<16} {outfall_elevation:<10.2f} {'FREE':<10} {'':<16} {'NO':<8} {'':<16}")
         content.append("")
         
-        # Storage section for wet well
+        # Storage section for wet well tank - realistic pump station design
         content.append("[STORAGE]")
         content.append(";;Name           Elev.    MaxDepth   InitDepth  Shape      Curve Name/Params            N/A      Fevap    Psi      Ksat     IMD     ")
         content.append(";;-------------- -------- ---------- ----------- ---------- ---------------------------- -------- -------- -------- -------- --------")
