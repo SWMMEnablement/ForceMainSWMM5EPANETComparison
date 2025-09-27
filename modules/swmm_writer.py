@@ -211,16 +211,9 @@ class SWMMInputGenerator:
         # Header sections
         content.extend(self.create_header_sections(config.get('project_title', self.title)))
         
-        # DWF (Dry Weather Flow) for constant inflow to wet well
-        content.append("[DWF]")
-        content.append(";;Node           Constituent      Baseline   Pattern   ")
-        content.append(";;-------------- ---------------- ---------- ----------")
+        # Extract commonly used variables
         ww = config['wet_well']
-        # Use pump flow rate as the constant inflow (or default value)
         pump = config.get('pump', {})
-        inflow_rate = pump.get('flow', 0.15)  # Default 0.15 m³/s if not specified
-        content.append(f"{ww['id']:<16} {'FLOW':<16} {inflow_rate:<10.6f} {'':<10}")
-        content.append("")
         
         # Junctions section
         content.append("[JUNCTIONS]")
@@ -320,6 +313,17 @@ class SWMMInputGenerator:
         content.extend(self.create_report_section())
         
         # Files section removed to avoid hotstart file errors
+        
+        # DWF (Dry Weather Flow) for constant inflow to wet well - at end of file
+        content.append("[DWF]")
+        content.append(";;Node           Constituent      Baseline   Pattern   ")
+        content.append(";;-------------- ---------------- ---------- ----------")
+        ww = config['wet_well']
+        # Use pump flow rate as the constant inflow (or default value)
+        pump = config.get('pump', {})
+        inflow_rate = pump.get('flow', 0.15)  # Default 0.15 m³/s if not specified
+        content.append(f"{ww['id']:<16} {'FLOW':<16} {inflow_rate:<10.6f} {'':<10}")
+        content.append("")
         
         return "\n".join(content)
     
