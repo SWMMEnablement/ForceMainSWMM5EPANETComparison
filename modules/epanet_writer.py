@@ -66,60 +66,47 @@ class EPANETInputGenerator:
         content.append("Force main system modeled in EPANET for comparison with SWMM5")
         content.append("")
         
-        # Junctions section (nodes)
+        # Junctions section - simplified for realistic pump station
         content.append("[JUNCTIONS]")
         content.append(";ID              Elev        Demand      Pattern         ;")
         
         ww = config['wet_well']
         dn = config['discharge_node']
         pump = config['pump']
-        
-        # Wet well as junction with negative demand (supply) - use same flow as SWMM5 DWF
         inflow_rate = pump.get('flow', 0.15)  # Same as SWMM5 DWF section
-        content.append(f" {ww['id']:<15} {ww['elevation']:<11.2f} {-abs(inflow_rate)*1000:<11.3f}                     ;")
         
-        # Intermediate pump discharge node
-        pump_discharge_node = pump['to']
-        pump_from_elevation = ww['elevation'] + 1.0  # Slightly higher than wet well
-        content.append(f" {pump_discharge_node:<15} {pump_from_elevation:<11.2f} {0:<11.3f}                     ;")
-        
-        # Discharge node
-        content.append(f" {dn['id']:<15} {dn['elevation']:<11.2f} {dn.get('demand', 0)*1000:<11.3f}                     ;")
+        # No junctions needed - wet well is tank, discharge is reservoir
         content.append("")
         
-        # Reservoirs section (for boundary conditions)
+        # Reservoirs section - single discharge reservoir for realistic pump station
         content.append("[RESERVOIRS]")
         content.append(";ID              Head        Pattern         ;")
         
-        # Add atmospheric discharge as reservoir
-        atm_elevation = dn['elevation'] + 2.0  # Above discharge node
-        content.append(f" {'ATMOSPHERE':<15} {atm_elevation:<11.2f}                     ;")
+        # Single discharge reservoir at system discharge point
+        content.append(f" {'DISCHARGE_RES':<15} {dn['elevation']:<11.2f}                     ;")
         content.append("")
         
-        # Tanks section (if wet well modeled as tank)
+        # Tanks section - wet well as tank for realistic pump station
         content.append("[TANKS]")
         content.append(";ID              Elevation   InitLevel   MinLevel    MaxLevel    Diameter    MinVol      VolCurve")
-        # Optional: model wet well as tank for more realistic behavior
+        
+        # Wet well tank with realistic dimensions
+        tank_diameter = (4 * ww['area'] / 3.14159) ** 0.5  # Calculate diameter from area
+        content.append(f" {ww['id']:<15} {ww['invert']:<11.2f} {ww['init_depth']:<11.2f} {0.5:<11.2f} {ww['max_depth']:<11.2f} {tank_diameter:<11.2f} {0:<11.2f}        ;")
         content.append("")
         
-        # Pipes section
+        # Pipes section - no pipes needed for pump to reservoir
         content.append("[PIPES]")
         content.append(";ID              Node1           Node2           Length      Diameter    Roughness   MinorLoss   Status")
-        
-        fm = config['force_main']
-        # Force main pipe
-        content.append(f" {fm['id']:<15} {fm['from']:<15} {fm['to']:<15} {fm['length']:<11.2f} {fm['diameter']*1000:<11.1f} {fm['roughness']:<11.3f} {0:<11.3f} Open  ;")
-        
-        # Discharge pipe to atmosphere (for pressure relief)
-        content.append(f" {'DISCHARGE':<15} {dn['id']:<15} {'ATMOSPHERE':<15} {10.0:<11.2f} {fm['diameter']*1000*1.5:<11.1f} {120:<11.3f} {0:<11.3f} Open  ;")
         content.append("")
         
-        # Pumps section
+        # Pumps section - pump directly from tank to reservoir
         content.append("[PUMPS]")
         content.append(";ID              Node1           Node2           Parameters")
         
         curve_id = f"CURVE_{pump['id']}"
-        content.append(f" {pump['id']:<15} {pump['from']:<15} {pump['to']:<15} HEAD {curve_id}  ;")
+        # Pump from wet well tank to discharge reservoir
+        content.append(f" {pump['id']:<15} {ww['id']:<15} {'DISCHARGE_RES':<15} HEAD {curve_id}  ;")
         content.append("")
         
         # Valves section (if needed for control)
@@ -131,11 +118,11 @@ class EPANETInputGenerator:
         content.append("[TAGS]")
         content.append("")
         
-        # Demands section - explicit demand entries to match SWMM5 DWF
+        # Demands section - tank inflow via external source
         content.append("[DEMANDS]")
         content.append(";Junction        Demand      Pattern         Category")
-        # Wet well supply (negative demand = inflow)
-        content.append(f" {ww['id']:<15} {-abs(inflow_rate)*1000:<11.3f} CONSTANT         Inflow    ;")
+        # Tank inflow modeled as external source (will be handled in EPANET externally)
+        content.append(f"; Tank {ww['id']} receives {inflow_rate*1000:.1f} L/s constant inflow")
         content.append("")
         
         # Status section
@@ -160,11 +147,11 @@ class EPANETInputGenerator:
             content.append(f" {curve_id:<15} {flow_ls:<11.3f} {head_m:<11.2f}")
         content.append("")
         
-        # Controls section
+        # Controls section - realistic tank level controls
         content.append("[CONTROLS]")
-        content.append("; Control wet well level with pump operation")
-        content.append(f"LINK {pump['id']} 1.0 IF NODE {ww['id']} ABOVE {ww['elevation'] + 2.0}")
-        content.append(f"LINK {pump['id']} 0.0 IF NODE {ww['id']} BELOW {ww['elevation'] + 0.5}")
+        content.append("; Control pump based on tank water level")
+        content.append(f"LINK {pump['id']} 1.0 IF NODE {ww['id']} ABOVE {pump.get('startup', 2.0)}")
+        content.append(f"LINK {pump['id']} 0.0 IF NODE {ww['id']} BELOW {pump.get('shutoff', 0.5)}")
         content.append("")
         
         # Rules section (advanced controls)
@@ -188,7 +175,7 @@ class EPANETInputGenerator:
         content.append(";Node            InitQual")
         content.append("")
         
-        # Sources section
+        # Sources section - for water quality modeling only
         content.append("[SOURCES]")
         content.append(";Node            Type        Quality     Pattern")
         content.append("")
@@ -229,13 +216,11 @@ class EPANETInputGenerator:
             content.append(f" {key:<18} {value}")
         content.append("")
         
-        # Coordinates section (for visualization)
+        # Coordinates section (simplified for tank-to-reservoir system)
         content.append("[COORDINATES]")
         content.append(";Node            X-Coord         Y-Coord")
-        content.append(f" {ww['id']:<15} {0:<15.2f} {ww['elevation']:<15.2f}")
-        content.append(f" {pump_discharge_node:<15} {500:<15.2f} {pump_from_elevation:<15.2f}")
-        content.append(f" {dn['id']:<15} {1000:<15.2f} {dn['elevation']:<15.2f}")
-        content.append(f" {'ATMOSPHERE':<15} {1100:<15.2f} {atm_elevation:<15.2f}")
+        content.append(f" {ww['id']:<15} {0:<15.2f} {ww['invert']:<15.2f}")
+        content.append(f" {'DISCHARGE_RES':<15} {1000:<15.2f} {dn['elevation']:<15.2f}")
         content.append("")
         
         # Vertices section
