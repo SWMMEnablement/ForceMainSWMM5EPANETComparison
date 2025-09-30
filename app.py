@@ -1410,6 +1410,79 @@ def epanet_swmm_comparison():
     st.header("⚖️ EPANET vs SWMM5 Comparison")
     st.markdown("Compare force main modeling approaches between EPANET and SWMM5")
     
+    # Model Consistency Checker
+    st.subheader("📋 Model Consistency Validation")
+    st.markdown("Verify that your SWMM5 and EPANET models follow consistency rules for accurate comparison")
+    
+    with st.expander("🔍 Check Model Consistency", expanded=False):
+        from modules.validator import ModelConsistencyChecker
+        
+        st.markdown("""
+        **Consistency Rules Validation:**
+        - ✅ Physical parameters match (diameter, length, roughness)
+        - ✅ Pump curves are identical
+        - ✅ Boundary conditions align (elevations)
+        - ✅ Same friction equation used
+        """)
+        
+        # Quick validation form
+        col_check1, col_check2 = st.columns(2)
+        
+        with col_check1:
+            st.write("**SWMM5 Parameters:**")
+            swmm_diameter = st.number_input("Diameter (m)", value=0.3, key="swmm_diam_check")
+            swmm_length = st.number_input("Length (m)", value=1000.0, key="swmm_length_check")
+            swmm_roughness = st.number_input("Roughness", value=0.013, format="%.4f", key="swmm_rough_check")
+            swmm_elev = st.number_input("Wet Well Invert (m)", value=95.0, key="swmm_elev_check")
+        
+        with col_check2:
+            st.write("**EPANET Parameters:**")
+            epanet_diameter = st.number_input("Diameter (m)", value=0.3, key="epanet_diam_check")
+            epanet_length = st.number_input("Length (m)", value=1000.0, key="epanet_length_check")
+            epanet_roughness = st.number_input("Roughness", value=0.013, format="%.4f", key="epanet_rough_check")
+            epanet_elev = st.number_input("Wet Well Invert (m)", value=95.0, key="epanet_elev_check")
+        
+        if st.button("🔍 Check Consistency"):
+            checker = ModelConsistencyChecker()
+            
+            # Create mock configs for checking
+            swmm_config = {
+                'force_main': {'diameter': swmm_diameter, 'length': swmm_length, 'roughness': swmm_roughness},
+                'wet_well': {'invert': swmm_elev},
+                'discharge_node': {'elevation': 105.0},
+                'pump': {'curve_data': [(0.1, 50), (0.2, 45)]}
+            }
+            
+            epanet_config = {
+                'force_main': {'diameter': epanet_diameter, 'length': epanet_length, 'roughness': epanet_roughness},
+                'wet_well': {'invert': epanet_elev},
+                'discharge_node': {'elevation': 105.0},
+                'pump': {'curve_data': [(0.1, 50), (0.2, 45)]}
+            }
+            
+            report = checker.generate_consistency_report(swmm_config, epanet_config)
+            
+            if report['is_consistent']:
+                st.success(f"✅ **Models are consistent!** No high-severity issues found.")
+            else:
+                st.error(f"❌ **Consistency Issues Found:** {report['summary']}")
+            
+            if report['all_issues']:
+                st.write("**Detailed Issues:**")
+                for issue in report['all_issues']:
+                    severity_icon = "🔴" if issue['severity'] == 'HIGH' else "🟡"
+                    st.write(f"{severity_icon} **{issue['rule']}** - {issue['parameter']}")
+                    st.write(f"   SWMM5: {issue['swmm_value']} | EPANET: {issue['epanet_value']}")
+                    st.write(f"   Issue: {issue['issue']}")
+            else:
+                st.success("All parameters are within acceptable tolerance!")
+        
+        st.markdown("""
+        **Reference:**
+        These checks follow the "Rules for Modeling a Force Main in SWMM5 and EPANET" guidelines.
+        Models must have matching physical parameters to produce comparable results.
+        """)
+    
     # Comparison overview
     st.subheader("Modeling Approach Comparison")
     
