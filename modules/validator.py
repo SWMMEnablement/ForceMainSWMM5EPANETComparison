@@ -16,13 +16,13 @@ class ModelConsistencyChecker:
         """
         Rule 1: Verify physical parameters match between models
         """
-        self.issues = []
+        issues = []
         
         # Check diameter
         swmm_diam = swmm_config['force_main']['diameter']
         epanet_diam = epanet_config['force_main']['diameter']
         if abs(swmm_diam - epanet_diam) / swmm_diam > 0.001:
-            self.issues.append({
+            issues.append({
                 'rule': 'Rule 1 - Physical Parameters',
                 'severity': 'HIGH',
                 'parameter': 'Diameter',
@@ -35,7 +35,7 @@ class ModelConsistencyChecker:
         swmm_length = swmm_config['force_main']['length']
         epanet_length = epanet_config['force_main']['length']
         if abs(swmm_length - epanet_length) / swmm_length > 0.001:
-            self.issues.append({
+            issues.append({
                 'rule': 'Rule 1 - Physical Parameters',
                 'severity': 'HIGH',
                 'parameter': 'Length',
@@ -48,7 +48,7 @@ class ModelConsistencyChecker:
         swmm_rough = swmm_config['force_main']['roughness']
         epanet_rough = epanet_config['force_main']['roughness']
         if abs(swmm_rough - epanet_rough) / max(swmm_rough, 0.001) > 0.001:
-            self.issues.append({
+            issues.append({
                 'rule': 'Rule 1 - Physical Parameters',
                 'severity': 'HIGH',
                 'parameter': 'Roughness',
@@ -57,17 +57,18 @@ class ModelConsistencyChecker:
                 'issue': 'Roughness coefficients do not match between SWMM5 and EPANET'
             })
         
-        return self.issues
+        return issues
     
     def check_pump_curves(self, swmm_pump: Dict, epanet_pump: Dict) -> List[Dict]:
         """
         Rule 6 & 8: Verify pump curves are identical
         """
+        issues = []
         swmm_curve = swmm_pump.get('curve_data', [])
         epanet_curve = epanet_pump.get('curve_data', [])
         
         if len(swmm_curve) != len(epanet_curve):
-            self.issues.append({
+            issues.append({
                 'rule': 'Rule 6/8 - Pump Curves',
                 'severity': 'HIGH',
                 'parameter': 'Pump Curve Points',
@@ -75,7 +76,7 @@ class ModelConsistencyChecker:
                 'epanet_value': f"{len(epanet_curve)} points",
                 'issue': 'Pump curves have different number of points'
             })
-            return self.issues
+            return issues
         
         # Check each point
         for i, (swmm_pt, epanet_pt) in enumerate(zip(swmm_curve, epanet_curve)):
@@ -83,7 +84,7 @@ class ModelConsistencyChecker:
             epanet_flow, epanet_head = epanet_pt
             
             if abs(swmm_flow - epanet_flow) / max(swmm_flow, 0.001) > 0.01:
-                self.issues.append({
+                issues.append({
                     'rule': 'Rule 6/8 - Pump Curves',
                     'severity': 'HIGH',
                     'parameter': f'Pump Curve Point {i+1} - Flow',
@@ -93,7 +94,7 @@ class ModelConsistencyChecker:
                 })
             
             if abs(swmm_head - epanet_head) / max(swmm_head, 0.1) > 0.01:
-                self.issues.append({
+                issues.append({
                     'rule': 'Rule 6/8 - Pump Curves',
                     'severity': 'HIGH',
                     'parameter': f'Pump Curve Point {i+1} - Head',
@@ -102,18 +103,20 @@ class ModelConsistencyChecker:
                     'issue': f'Pump curve head values differ at point {i+1}'
                 })
         
-        return self.issues
+        return issues
     
     def check_boundary_conditions(self, swmm_config: Dict, epanet_config: Dict) -> List[Dict]:
         """
         Rule 3: Verify boundary conditions alignment
         """
+        issues = []
+        
         # Check wet well elevations
         swmm_ww_elev = swmm_config['wet_well'].get('invert', 0)
         epanet_ww_elev = epanet_config['wet_well'].get('invert', 0)
         
         if abs(swmm_ww_elev - epanet_ww_elev) > 0.01:
-            self.issues.append({
+            issues.append({
                 'rule': 'Rule 3 - Boundary Conditions',
                 'severity': 'MEDIUM',
                 'parameter': 'Wet Well Elevation',
@@ -127,7 +130,7 @@ class ModelConsistencyChecker:
         epanet_dn_elev = epanet_config['discharge_node'].get('elevation', 0)
         
         if abs(swmm_dn_elev - epanet_dn_elev) > 0.01:
-            self.issues.append({
+            issues.append({
                 'rule': 'Rule 3 - Boundary Conditions',
                 'severity': 'MEDIUM',
                 'parameter': 'Discharge Elevation',
@@ -136,7 +139,7 @@ class ModelConsistencyChecker:
                 'issue': 'Discharge elevations do not match'
             })
         
-        return self.issues
+        return issues
     
     def generate_consistency_report(self, swmm_config: Dict, epanet_config: Dict) -> Dict:
         """
