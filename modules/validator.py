@@ -2,6 +2,172 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple, Any
 
+class ModelConsistencyChecker:
+    """
+    Validate consistency between SWMM5 and EPANET models
+    Following rules from "Rules for Modeling a Force Main in SWMM5 and EPANET"
+    """
+    
+    def __init__(self):
+        self.issues = []
+        self.tolerance = 0.1  # 10% tolerance for acceptable differences
+        
+    def check_physical_parameters(self, swmm_config: Dict, epanet_config: Dict) -> List[Dict]:
+        """
+        Rule 1: Verify physical parameters match between models
+        """
+        self.issues = []
+        
+        # Check diameter
+        swmm_diam = swmm_config['force_main']['diameter']
+        epanet_diam = epanet_config['force_main']['diameter']
+        if abs(swmm_diam - epanet_diam) / swmm_diam > 0.001:
+            self.issues.append({
+                'rule': 'Rule 1 - Physical Parameters',
+                'severity': 'HIGH',
+                'parameter': 'Diameter',
+                'swmm_value': f"{swmm_diam:.4f} m",
+                'epanet_value': f"{epanet_diam:.4f} m",
+                'issue': 'Pipe diameters do not match between SWMM5 and EPANET'
+            })
+        
+        # Check length
+        swmm_length = swmm_config['force_main']['length']
+        epanet_length = epanet_config['force_main']['length']
+        if abs(swmm_length - epanet_length) / swmm_length > 0.001:
+            self.issues.append({
+                'rule': 'Rule 1 - Physical Parameters',
+                'severity': 'HIGH',
+                'parameter': 'Length',
+                'swmm_value': f"{swmm_length:.2f} m",
+                'epanet_value': f"{epanet_length:.2f} m",
+                'issue': 'Pipe lengths do not match between SWMM5 and EPANET'
+            })
+        
+        # Check roughness
+        swmm_rough = swmm_config['force_main']['roughness']
+        epanet_rough = epanet_config['force_main']['roughness']
+        if abs(swmm_rough - epanet_rough) / max(swmm_rough, 0.001) > 0.001:
+            self.issues.append({
+                'rule': 'Rule 1 - Physical Parameters',
+                'severity': 'HIGH',
+                'parameter': 'Roughness',
+                'swmm_value': f"{swmm_rough:.4f}",
+                'epanet_value': f"{epanet_rough:.4f}",
+                'issue': 'Roughness coefficients do not match between SWMM5 and EPANET'
+            })
+        
+        return self.issues
+    
+    def check_pump_curves(self, swmm_pump: Dict, epanet_pump: Dict) -> List[Dict]:
+        """
+        Rule 6 & 8: Verify pump curves are identical
+        """
+        swmm_curve = swmm_pump.get('curve_data', [])
+        epanet_curve = epanet_pump.get('curve_data', [])
+        
+        if len(swmm_curve) != len(epanet_curve):
+            self.issues.append({
+                'rule': 'Rule 6/8 - Pump Curves',
+                'severity': 'HIGH',
+                'parameter': 'Pump Curve Points',
+                'swmm_value': f"{len(swmm_curve)} points",
+                'epanet_value': f"{len(epanet_curve)} points",
+                'issue': 'Pump curves have different number of points'
+            })
+            return self.issues
+        
+        # Check each point
+        for i, (swmm_pt, epanet_pt) in enumerate(zip(swmm_curve, epanet_curve)):
+            swmm_flow, swmm_head = swmm_pt
+            epanet_flow, epanet_head = epanet_pt
+            
+            if abs(swmm_flow - epanet_flow) / max(swmm_flow, 0.001) > 0.01:
+                self.issues.append({
+                    'rule': 'Rule 6/8 - Pump Curves',
+                    'severity': 'HIGH',
+                    'parameter': f'Pump Curve Point {i+1} - Flow',
+                    'swmm_value': f"{swmm_flow:.4f} m³/s",
+                    'epanet_value': f"{epanet_flow:.4f} m³/s",
+                    'issue': f'Pump curve flow rates differ at point {i+1}'
+                })
+            
+            if abs(swmm_head - epanet_head) / max(swmm_head, 0.1) > 0.01:
+                self.issues.append({
+                    'rule': 'Rule 6/8 - Pump Curves',
+                    'severity': 'HIGH',
+                    'parameter': f'Pump Curve Point {i+1} - Head',
+                    'swmm_value': f"{swmm_head:.2f} m",
+                    'epanet_value': f"{epanet_head:.2f} m",
+                    'issue': f'Pump curve head values differ at point {i+1}'
+                })
+        
+        return self.issues
+    
+    def check_boundary_conditions(self, swmm_config: Dict, epanet_config: Dict) -> List[Dict]:
+        """
+        Rule 3: Verify boundary conditions alignment
+        """
+        # Check wet well elevations
+        swmm_ww_elev = swmm_config['wet_well'].get('invert', 0)
+        epanet_ww_elev = epanet_config['wet_well'].get('invert', 0)
+        
+        if abs(swmm_ww_elev - epanet_ww_elev) > 0.01:
+            self.issues.append({
+                'rule': 'Rule 3 - Boundary Conditions',
+                'severity': 'MEDIUM',
+                'parameter': 'Wet Well Elevation',
+                'swmm_value': f"{swmm_ww_elev:.2f} m",
+                'epanet_value': f"{epanet_ww_elev:.2f} m",
+                'issue': 'Wet well elevations do not match'
+            })
+        
+        # Check discharge elevations
+        swmm_dn_elev = swmm_config['discharge_node'].get('elevation', 0)
+        epanet_dn_elev = epanet_config['discharge_node'].get('elevation', 0)
+        
+        if abs(swmm_dn_elev - epanet_dn_elev) > 0.01:
+            self.issues.append({
+                'rule': 'Rule 3 - Boundary Conditions',
+                'severity': 'MEDIUM',
+                'parameter': 'Discharge Elevation',
+                'swmm_value': f"{swmm_dn_elev:.2f} m",
+                'epanet_value': f"{epanet_dn_elev:.2f} m",
+                'issue': 'Discharge elevations do not match'
+            })
+        
+        return self.issues
+    
+    def generate_consistency_report(self, swmm_config: Dict, epanet_config: Dict) -> Dict:
+        """
+        Generate complete consistency report between SWMM5 and EPANET models
+        """
+        all_issues = []
+        
+        # Check all rules
+        all_issues.extend(self.check_physical_parameters(swmm_config, epanet_config))
+        all_issues.extend(self.check_pump_curves(
+            swmm_config.get('pump', {}), 
+            epanet_config.get('pump', {})
+        ))
+        all_issues.extend(self.check_boundary_conditions(swmm_config, epanet_config))
+        
+        # Categorize by severity
+        high_severity = [i for i in all_issues if i['severity'] == 'HIGH']
+        medium_severity = [i for i in all_issues if i['severity'] == 'MEDIUM']
+        
+        report = {
+            'total_issues': len(all_issues),
+            'high_severity': len(high_severity),
+            'medium_severity': len(medium_severity),
+            'all_issues': all_issues,
+            'is_consistent': len(high_severity) == 0,
+            'summary': f"Found {len(all_issues)} consistency issues " +
+                      f"({len(high_severity)} high, {len(medium_severity)} medium)"
+        }
+        
+        return report
+
 class TroubleshootingAssistant:
     """
     Diagnose and fix common force main modeling issues in SWMM5

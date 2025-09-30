@@ -1,0 +1,107 @@
+# Rules for Modeling a Force Main in SWMM5 and EPANET
+
+## Common Principles (Both Software)
+
+1. **Physical Parameters Must Match**
+   - Use identical pipe diameter, length, material, and roughness coefficient
+   - Ensure elevation data (upstream/downstream) is the same in both models
+   - Apply the same fluid properties (temperature affects viscosity)
+
+2. **Consistent Hydraulic Assumptions**
+   - Use the same friction loss equation (Darcy-Weisbach or Hazen-Williams)
+   - If using Darcy-Weisbach, ensure roughness height values are equivalent
+   - If using Hazen-Williams, use the same C-factor
+
+3. **Boundary Conditions Alignment**
+   - Match pump curves or constant flow inputs
+   - Ensure downstream boundary conditions (pressure/head) are equivalent
+   - Account for any control valves or check valves similarly
+
+---
+
+## SWMM5-Specific Rules
+
+4. **Use FORCE_MAIN Link Type**
+   - Set link type as "FORCE_MAIN" (not "CONDUIT")
+   - Choose appropriate friction method: Hazen-Williams (H-W) or Darcy-Weisbach (D-W)
+
+5. **Node Configuration**
+   - Upstream node: Set as wet well or junction with appropriate invert elevation
+   - Downstream node: Set discharge point with correct rim/invert elevations
+   - Ensure nodes don't surcharge unless intentional
+
+6. **Pump Representation**
+   - Define pump curve matching the actual pump performance
+   - Link pump to force main inlet node
+   - Set appropriate pump control rules (on/off based on wet well levels)
+
+7. **Dynamic Wave vs. Steady Flow**
+   - For transient analysis: Use Dynamic Wave routing
+   - For steady-state approximation: Kinematic Wave may suffice
+   - Force mains typically require Dynamic Wave for accurate pressure simulation
+
+---
+
+## EPANET-Specific Rules
+
+8. **Pipe and Pump Setup**
+   - Model force main as a standard PIPE element
+   - Add PUMP element at upstream end with matching curve
+   - Set pump pattern if flow varies over time
+
+9. **Junction/Reservoir Configuration**
+   - Upstream: Use RESERVOIR or TANK to represent wet well
+   - Downstream: Use JUNCTION or RESERVOIR at discharge point
+   - Set correct elevations at all nodes
+
+10. **Hydraulic Options**
+    - Select appropriate headloss formula (D-W or H-W) in Options
+    - Set correct units (SI or US Customary)
+    - Define appropriate time step for extended period simulation
+
+11. **Check Valve Consideration**
+    - EPANET has built-in check valve (CV) option for pipes
+    - Add CV to prevent backflow if needed
+    - SWMM requires flap gate setting on outlet node
+
+---
+
+## Calibration & Validation
+
+12. **Verification Steps**
+    - Compare friction losses for same flow rate in both models
+    - Verify pressure head at key points matches between models
+    - Check that pump operating points align on pump curve
+    - Validate velocity and Reynolds number calculations
+
+13. **Acceptable Differences**
+    - Minor variations may occur due to different solution algorithms
+    - SWMM includes minor losses more explicitly (entrance/exit)
+    - EPANET may require manual addition of minor loss coefficients
+
+14. **Documentation**
+    - Record all assumptions and parameter sources
+    - Note any simplifications made in either model
+    - Document why any differences exist between the two models
+
+---
+
+## Common Pitfalls to Avoid
+
+- **Don't mix units** - Be consistent with metric or imperial throughout
+- **Don't ignore minor losses** - Include entrance/exit losses, bends, valves
+- **Don't forget air release** - Consider if air accumulation points exist
+- **Don't overlook pump efficiency** - May affect energy calculations
+- **Don't use incompatible roughness values** - D-W uses absolute roughness (mm), H-W uses dimensionless C-factor
+
+---
+
+## When Results Should Match
+
+If properly configured with these rules, both models should produce:
+- Similar friction head losses (within 5-10%)
+- Equivalent flow velocities
+- Comparable pressure profiles along the force main
+- Matching pump operating points (flow vs. head)
+
+Significant discrepancies indicate errors in parameter translation or fundamental modeling differences that need investigation.

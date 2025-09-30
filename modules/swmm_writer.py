@@ -5,6 +5,16 @@ import numpy as np
 class SWMMInputGenerator:
     """
     Generate SWMM5 input files for force main systems
+    
+    MODELING RULES FOR SWMM5-EPANET CONSISTENCY:
+    - Use FORCE_MAIN link type (not CONDUIT) with proper XSECTIONS
+    - Physical parameters (diameter, length, roughness) must match EPANET
+    - Use DYNWAVE routing for accurate pressure simulation (Rule 7)
+    - Friction equation (H-W or D-W) must match EPANET settings
+    - Wet well modeled as STORAGE node for realistic pump station
+    - Pump curves must be identical to EPANET pump curves
+    - Minor losses included in XSECTIONS configuration
+    - Results should match EPANET within 5-10% tolerance
     """
     
     def __init__(self):

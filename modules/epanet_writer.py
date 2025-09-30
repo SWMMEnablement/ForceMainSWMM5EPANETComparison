@@ -5,6 +5,15 @@ import numpy as np
 class EPANETInputGenerator:
     """
     Generate EPANET input files for force main systems
+    
+    MODELING RULES FOR EPANET-SWMM5 CONSISTENCY:
+    - Physical parameters (diameter, length, roughness) must match SWMM5
+    - Use same friction equation (H-W or D-W) as specified in SWMM5
+    - Include minor losses (entrance: 0.5, exit: 1.0) as per Rule 13
+    - Wet well modeled as TANK (not junction) for realistic pump station
+    - Pump curves must be identical to SWMM5 pump curves
+    - Check valve available to prevent backflow (Rule 11)
+    - Results should match SWMM5 within 5-10% tolerance
     """
     
     def __init__(self):
@@ -97,14 +106,19 @@ class EPANETInputGenerator:
         content.append(f" {ww['id']:<15} {ww['invert']:<11.2f} {ww['init_depth']:<11.2f} {0.5:<11.2f} {ww['max_depth']:<11.2f} {tank_diameter:<11.2f} {0:<11.2f}        ;")
         content.append("")
         
-        # Pipes section - short connection from pump discharge to reservoir
+        # Pipes section - force main matching SWMM5 configuration
         content.append("[PIPES]")
         content.append(";ID              Node1           Node2           Length      Diameter    Roughness   MinorLoss   Status")
         
-        # Short pipe from pump discharge to reservoir
+        # Force main pipe - MUST match SWMM5 physical parameters (Rule 1)
         fm = config['force_main']
         pipe_diam_mm = fm['diameter'] * 1000  # Convert m to mm
-        content.append(f" {'DISCHARGE_PIPE':<15} {'PUMP_DISCH':<15} {'DISCHARGE_RES':<15} {10.0:<11.2f} {pipe_diam_mm:<11.1f} {fm['roughness']:<11.3f} {0:<11.3f} Open  ;")
+        
+        # Calculate minor losses: entrance (0.5) + exit (1.0) = 1.5 (Rule 13)
+        minor_loss = 1.5
+        
+        # Force main pipe with proper length and minor losses
+        content.append(f" {fm['id']:<15} {'PUMP_DISCH':<15} {'DISCHARGE_RES':<15} {fm['length']:<11.2f} {pipe_diam_mm:<11.1f} {fm['roughness']:<11.3f} {minor_loss:<11.3f} Open  ;")
         content.append("")
         
         # Pumps section - pump from tank to discharge junction
@@ -116,9 +130,12 @@ class EPANETInputGenerator:
         content.append(f" {pump['id']:<15} {ww['id']:<15} {'PUMP_DISCH':<15} HEAD {curve_id}  ;")
         content.append("")
         
-        # Valves section (if needed for control)
+        # Valves section - Check Valve to prevent backflow (Rule 11)
         content.append("[VALVES]")
         content.append(";ID              Node1           Node2           Diameter    Type    Setting     MinorLoss   ")
+        # Optional: Add check valve if backflow prevention is needed
+        # Uncomment next line to add check valve functionality
+        # content.append(f" CHECK_VALVE     PUMP_DISCH      DISCHARGE_RES   {pipe_diam_mm:<11.1f} CV      0.000       0.000       ;")
         content.append("")
         
         # Tags section
