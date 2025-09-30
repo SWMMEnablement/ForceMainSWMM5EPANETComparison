@@ -273,57 +273,80 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Custom styling for the selectbox
+    # Custom styling for the tool buttons
     st.sidebar.markdown("""
     <style>
-    .stSelectbox > label {
-        font-weight: 600 !important;
-        color: #374151 !important;
-        font-size: 1rem !important;
+    /* Tool button styling */
+    [data-testid="stSidebar"] .stButton > button {
+        width: 100% !important;
+        text-align: left !important;
+        padding: 0.75rem 1rem !important;
         margin-bottom: 0.5rem !important;
+        font-size: 0.95rem !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease-in-out !important;
     }
     
-    /* Enhanced selectbox styling */
-    [data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div {
+    /* Secondary button styling for unselected tools */
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"] {
         background: white !important;
+        color: #374151 !important;
         border: 2px solid #e5e7eb !important;
-        border-radius: 10px !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    }
+    
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
+        border-color: #667eea !important;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+        transform: translateX(3px) !important;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
     }
     
-    [data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div:hover {
-        border-color: #667eea !important;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+    /* Primary button styling for selected tool */
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3) !important;
+        font-weight: 600 !important;
     }
     
-    /* Dropdown options styling */
-    [data-testid="stSidebar"] [data-testid="stSelectbox"] div[role="option"] {
-        padding: 0.75rem 1rem !important;
-        font-size: 0.95rem !important;
-        border-bottom: 1px solid #f3f4f6 !important;
-    }
-    
-    [data-testid="stSidebar"] [data-testid="stSelectbox"] div[role="option"]:hover {
-        background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%) !important;
+    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
+        transform: translateX(3px) !important;
+        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4) !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    page = st.sidebar.selectbox(
-        "🎯 Select Tool",
-        [
-            "🏗️ Force Main Designer",
-            "📊 Friction Loss Calculator", 
-            "🔗 Network Analyzer",
-            "📝 SWMM Input Generator",
-            "📄 EPANET Input Generator",
-            "📈 Results Visualizer",
-            "⚖️ EPANET vs SWMM5 Comparison",
-            "🔧 Troubleshooting Assistant",
-            "💻 Source Code"
-        ],
-        help="Select a modeling tool from the dropdown menu"
-    )
+    # Initialize page selection in session state
+    if 'selected_page' not in st.session_state:
+        st.session_state.selected_page = "🏗️ Force Main Designer"
+    
+    # Tool selection with buttons
+    tools = [
+        "🏗️ Force Main Designer",
+        "📊 Friction Loss Calculator", 
+        "🔗 Network Analyzer",
+        "📝 SWMM Input Generator",
+        "📄 EPANET Input Generator",
+        "📈 Results Visualizer",
+        "⚖️ EPANET vs SWMM5 Comparison",
+        "🔧 Troubleshooting Assistant",
+        "💻 Source Code"
+    ]
+    
+    # Create button for each tool
+    for tool in tools:
+        if st.sidebar.button(
+            tool, 
+            key=f"btn_{tool}",
+            use_container_width=True,
+            type="primary" if st.session_state.selected_page == tool else "secondary"
+        ):
+            st.session_state.selected_page = tool
+            st.rerun()
+    
+    page = st.session_state.selected_page
     
     # Add tool descriptions in sidebar
     tool_descriptions = {

@@ -11,7 +11,9 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-The application uses Streamlit as the web framework, providing a multi-page interface with sidebar navigation. The main entry point (`app.py`) implements a page-based architecture with six distinct tools: Force Main Designer, Friction Loss Calculator, Network Analyzer, SWMM Input Generator, Results Visualizer, and Troubleshooting Assistant. Each tool is implemented as a separate function within the main application, allowing for modular development and maintenance.
+The application uses Streamlit as the web framework, providing a multi-page interface with button-based sidebar navigation. The main entry point (`app.py`) implements a page-based architecture with nine distinct tools accessed via individual buttons: Force Main Designer, Friction Loss Calculator, Network Analyzer, SWMM Input Generator, EPANET Input Generator, Results Visualizer, EPANET vs SWMM5 Comparison, Troubleshooting Assistant, and Source Code Explorer. Each tool is implemented as a separate function within the main application, allowing for modular development and maintenance.
+
+The navigation system uses session state (`st.session_state.selected_page`) to track the active tool, with visual feedback through primary/secondary button styling. Selected tools display with a purple-blue gradient background, while unselected tools show a white background with gray borders. Button interactions trigger page reruns to display the corresponding tool content.
 
 ### Backend Architecture
 The core functionality is organized into specialized modules within the `modules/` directory:
