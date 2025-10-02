@@ -29,7 +29,7 @@ def load_custom_css():
 
 /* Global Styling */
 .block-container {
-    padding-top: 2rem;
+    padding-top: 0.5rem;
 }
 
 /* Typography */
@@ -43,18 +43,18 @@ h1, h2, h3, h4, h5, h6 {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    font-size: 3rem !important;
+    font-size: 2.5rem !important;
     font-weight: 700 !important;
     text-align: center;
-    margin-bottom: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
 }
 
 /* Subtitle styling */
 .block-container p {
     text-align: center;
     color: #6b7280 !important;
-    font-size: 1.1rem !important;
-    margin-bottom: 2rem !important;
+    font-size: 1rem !important;
+    margin-bottom: 0.75rem !important;
 }
 
 /* Sidebar Styling */
@@ -64,17 +64,17 @@ h1, h2, h3, h4, h5, h6 {
 
 [data-testid="stSidebar"] > div {
     background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
-    padding: 1.5rem 1rem !important;
+    padding: 0.75rem 0.75rem !important;
 }
 
 /* Card-like containers */
 .metric-card {
     background: white;
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 12px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     border: 1px solid #e5e7eb;
-    margin: 1rem 0;
+    margin: 0.5rem 0;
 }
 
 /* Enhanced selectboxes */
@@ -159,7 +159,7 @@ div[data-testid="stSelectbox"] > div:first-child {
 div[data-testid="metric-container"] {
     background: white !important;
     border: 1px solid #e5e7eb !important;
-    padding: 1.5rem !important;
+    padding: 0.75rem !important;
     border-radius: 12px !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
     transition: all 0.2s ease-in-out !important;
@@ -195,14 +195,14 @@ div[data-testid="metric-container"] > div {
     color: #374151 !important;
     font-weight: 600 !important;
     font-size: 1.25rem !important;
-    margin: 1.5rem 0 1rem 0 !important;
-    padding-bottom: 0.5rem !important;
+    margin: 0.75rem 0 0.5rem 0 !important;
+    padding-bottom: 0.25rem !important;
     border-bottom: 2px solid #e5e7eb !important;
 }
 
 /* Enhanced columns */
 div[data-testid="column"] {
-    padding: 1rem !important;
+    padding: 0.5rem !important;
 }
 
 /* Enhanced plots */
@@ -215,15 +215,15 @@ div[data-testid="stPlotlyChart"] {
 
 /* Navigation styling */
 [data-testid="stSidebar"] [data-testid="stSelectbox"] {
-    margin-bottom: 2rem !important;
+    margin-bottom: 0.5rem !important;
 }
 
 /* Custom section containers */
 .section-container {
     background: white;
     border-radius: 12px;
-    padding: 2rem;
-    margin: 1rem 0;
+    padding: 1rem;
+    margin: 0.5rem 0;
     border: 1px solid #e5e7eb;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
@@ -232,16 +232,17 @@ div[data-testid="stPlotlyChart"] {
 .gradient-bg {
     background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     border-radius: 12px;
-    padding: 2rem;
-    margin: 1rem 0;
+    padding: 1rem;
+    margin: 0.5rem 0;
 }
 </style>
 """
 
-# Apply cached CSS only once per session
-if "css_loaded" not in st.session_state:
+# Apply CSS - force reload with version number to ensure updates are applied
+css_version = "v2_compact"
+if "css_version" not in st.session_state or st.session_state.get("css_version") != css_version:
     st.markdown(load_custom_css(), unsafe_allow_html=True)
-    st.session_state.css_loaded = True
+    st.session_state.css_version = css_version
 
 def main():
     st.title("🏗️ SWMM5 Force Mains Modeling App")
@@ -250,7 +251,7 @@ def main():
     # Add a welcome section with better visual appeal
     st.markdown("""
     <div class="section-container">
-        <h3 style="color: #374151; margin-bottom: 1rem;">🚀 Welcome to the Advanced Force Main Modeling Suite</h3>
+        <h3 style="color: #374151; margin-bottom: 0.5rem;">🚀 Welcome to the Advanced Force Main Modeling Suite</h3>
         <p style="color: #6b7280; margin-bottom: 0;">
             This comprehensive application provides professional-grade tools for hydraulic analysis, 
             network design, and optimization of force main systems in both SWMM5 and EPANET environments.
@@ -262,14 +263,14 @@ def main():
     st.sidebar.markdown("""
     <div style="
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-        padding: 1.5rem 1rem; 
-        margin: -1rem -1rem 2rem -1rem; 
+        padding: 0.75rem 0.75rem; 
+        margin: -0.75rem -0.75rem 0.75rem -0.75rem; 
         text-align: center;
         border-radius: 0 0 15px 15px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     ">
-        <h2 style="color: white; margin: 0; font-weight: 700; font-size: 1.5rem;">🔧 Navigation</h2>
-        <p style="color: rgba(255,255,255,0.9); font-size: 0.9rem; margin: 0.5rem 0 0 0;">Choose your modeling tool</p>
+        <h2 style="color: white; margin: 0; font-weight: 700; font-size: 1.25rem;">🔧 Navigation</h2>
+        <p style="color: rgba(255,255,255,0.9); font-size: 0.85rem; margin: 0.25rem 0 0 0;">Choose your modeling tool</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -280,9 +281,9 @@ def main():
     [data-testid="stSidebar"] .stButton > button {
         width: 100% !important;
         text-align: left !important;
-        padding: 0.75rem 1rem !important;
-        margin-bottom: 0.5rem !important;
-        font-size: 0.95rem !important;
+        padding: 0.5rem 0.75rem !important;
+        margin-bottom: 0.25rem !important;
+        font-size: 0.9rem !important;
         border-radius: 8px !important;
         transition: all 0.2s ease-in-out !important;
     }
@@ -365,14 +366,14 @@ def main():
         st.sidebar.markdown(f"""
         <div style="
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); 
-            padding: 1.25rem; 
-            border-radius: 12px; 
-            margin-top: 1.5rem;
+            padding: 0.75rem; 
+            border-radius: 8px; 
+            margin-top: 0.75rem;
             border-left: 4px solid #667eea;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         ">
-            <h4 style="color: #374151; margin: 0 0 0.5rem 0; font-size: 0.9rem; font-weight: 600;">📋 Tool Description</h4>
-            <p style="color: #475569; font-size: 0.85rem; margin: 0; line-height: 1.5; font-style: italic;">
+            <h4 style="color: #374151; margin: 0 0 0.35rem 0; font-size: 0.85rem; font-weight: 600;">📋 Tool Description</h4>
+            <p style="color: #475569; font-size: 0.8rem; margin: 0; line-height: 1.4; font-style: italic;">
                 {tool_descriptions[page]}
             </p>
         </div>
@@ -382,15 +383,15 @@ def main():
     st.sidebar.markdown("""
     <div style="
         position: static;
-        margin-top: 3rem;
+        margin-top: 1.5rem;
         background: rgba(255,255,255,0.9); 
-        padding: 0.75rem; 
+        padding: 0.5rem; 
         border-radius: 8px; 
         text-align: center;
         backdrop-filter: blur(5px);
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     ">
-        <p style="color: #6b7280; font-size: 0.75rem; margin: 0;">
+        <p style="color: #6b7280; font-size: 0.7rem; margin: 0;">
             💡 SWMM5 Force Main Modeling v1.0
         </p>
     </div>
