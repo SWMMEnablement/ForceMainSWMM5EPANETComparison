@@ -29,7 +29,7 @@ def load_custom_css():
 
 /* Global Styling */
 .block-container {
-    padding-top: 0.5rem;
+    padding-top: 2rem;
 }
 
 /* Typography */
@@ -239,7 +239,7 @@ div[data-testid="stPlotlyChart"] {
 """
 
 # Apply CSS - force reload with version number to ensure updates are applied
-css_version = "v2_compact"
+css_version = "v2_compact_fixed_top"
 if "css_version" not in st.session_state or st.session_state.get("css_version") != css_version:
     st.markdown(load_custom_css(), unsafe_allow_html=True)
     st.session_state.css_version = css_version
