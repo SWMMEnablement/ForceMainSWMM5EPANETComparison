@@ -232,11 +232,13 @@ class SWMMInputGenerator:
         
         # Add intermediate node for pump discharge
         pump_discharge_node = config['force_main']['from']
-        content.append(f"{pump_discharge_node:<16} {ww['invert'] + 1.0:<10.2f} {2.0:<10.2f} {0.0:<10.2f} {0.0:<10.2f} {0.0:<10.2f}")
+        content.append(f"{pump_discharge_node:<16} {ww['invert'] + 1.0:<10.2f} {2.0:<10.2f} {0.0:<10.2f} {100.0:<10.2f} {0.0:<10.2f}")
         
         # Add discharge node with surcharge capability
         dn = config['discharge_node']
-        content.append(f"{dn['id']:<16} {dn['elevation']:<10.2f} {dn['max_depth']:<10.2f} {0.0:<10.2f} {dn['surcharge_depth']:<10.2f} {0.0:<10.2f}")
+        # Ensure surcharge depth is at least 100 for force main nodes
+        surcharge_depth = max(dn.get('surcharge_depth', 100.0), 100.0)
+        content.append(f"{dn['id']:<16} {dn['elevation']:<10.2f} {dn['max_depth']:<10.2f} {0.0:<10.2f} {surcharge_depth:<10.2f} {0.0:<10.2f}")
         content.append("")
         
         # Outfalls section
@@ -282,7 +284,9 @@ class SWMMInputGenerator:
         content.append(";;-------------- ------------ ---------------- ---------- ---------- ---------- ---------- ----------")
         
         # Force main cross-section
-        content.append(f"{fm['id']:<16} {'FORCE_MAIN':<12} {fm['diameter']:<16.3f} {fm['roughness']:<10.3f} {0:<10.3f} {0:<10.3f} {1:<10} {0:<10}")
+        # Geom2 for FORCE_MAIN should be HW C coefficient (not Manning's n)
+        hw_c = 120 if fm['roughness'] < 1 else fm['roughness']  # Convert Manning's n to HW C if needed
+        content.append(f"{fm['id']:<16} {'FORCE_MAIN':<12} {fm['diameter']:<16.3f} {hw_c:<10.3f} {0:<10.3f} {0:<10.3f} {1:<10} {0:<10}")
         
         # Gravity conduit cross-section
         gravity_diameter = max(0.2, fm['diameter'] * 1.5)  # Size appropriately
@@ -395,7 +399,9 @@ class SWMMInputGenerator:
             
             for node_id in junctions:
                 node = nodes[node_id]
-                content.append(f"{node_id:<16} {node['invert']:<10.2f} {node.get('max_depth', 2.0):<10.2f} {0.0:<10.2f} {node.get('surcharge_depth', 0.0):<10.2f} {0.0:<10.2f}")
+                # Ensure surcharge depth is at least 100 for force main nodes
+                surcharge_depth = max(node.get('surcharge_depth', 100.0), 100.0)
+                content.append(f"{node_id:<16} {node['invert']:<10.2f} {node.get('max_depth', 2.0):<10.2f} {0.0:<10.2f} {surcharge_depth:<10.2f} {0.0:<10.2f}")
             content.append("")
         
         # Storage section
@@ -447,7 +453,9 @@ class SWMMInputGenerator:
         
         for link_id, link in links.items():
             if link['type'] == 'force_main':
-                content.append(f"{link_id:<16} {'FORCE_MAIN':<12} {link['diameter']:<16.3f} {link['roughness']:<10.3f} {0:<10.3f} {0:<10.3f} {1:<10} {0:<10}")
+                # Geom2 for FORCE_MAIN should be HW C coefficient (not Manning's n)
+                hw_c = 120 if link['roughness'] < 1 else link['roughness']  # Convert Manning's n to HW C if needed
+                content.append(f"{link_id:<16} {'FORCE_MAIN':<12} {link['diameter']:<16.3f} {hw_c:<10.3f} {0:<10.3f} {0:<10.3f} {1:<10} {0:<10}")
         content.append("")
         
         # Pump curves
