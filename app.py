@@ -671,16 +671,16 @@ def network_analyzer():
             
             if node_type == "Wet Well":
                 max_depth = st.number_input(f"Max Depth (m)", value=3.0, key=f"depth_{i}")
-                nodes_data.append({"id": f"N{i+1}", "type": "wet_well", "elevation": elevation, "max_depth": max_depth})
+                nodes_data.append({"id": f"Node {i+1}", "type": "wet_well", "elevation": elevation, "max_depth": max_depth})
             else:
-                nodes_data.append({"id": f"N{i+1}", "type": "junction", "elevation": elevation})
+                nodes_data.append({"id": f"Node {i+1}", "type": "junction", "elevation": elevation})
         
         st.subheader("Link Data")
         links_data = []
         for i in range(num_links):
             st.write(f"**Force Main {i+1}:**")
-            from_node = st.selectbox(f"From Node", [f"N{j+1}" for j in range(num_nodes)], key=f"from_{i}")
-            to_node = st.selectbox(f"To Node", [f"N{j+1}" for j in range(num_nodes) if f"N{j+1}" != from_node], key=f"to_{i}")
+            from_node = st.selectbox(f"From Node", [f"Node {j+1}" for j in range(num_nodes)], key=f"from_{i}")
+            to_node = st.selectbox(f"To Node", [f"Node {j+1}" for j in range(num_nodes) if f"Node {j+1}" != from_node], key=f"to_{i}")
             diameter = st.number_input(f"Diameter (m)", value=0.3, key=f"diam_{i}")
             length = st.number_input(f"Length (m)", value=1000.0, key=f"length_{i}")
             
@@ -696,8 +696,8 @@ def network_analyzer():
         pumps_data = []
         for i in range(num_pumps):
             st.write(f"**Pump {i+1}:**")
-            from_node = st.selectbox(f"From Node", [f"N{j+1}" for j in range(num_nodes)], key=f"pump_from_{i}")
-            to_node = st.selectbox(f"To Node", [f"N{j+1}" for j in range(num_nodes) if f"N{j+1}" != from_node], key=f"pump_to_{i}")
+            from_node = st.selectbox(f"From Node", [f"Node {j+1}" for j in range(num_nodes)], key=f"pump_from_{i}")
+            to_node = st.selectbox(f"To Node", [f"Node {j+1}" for j in range(num_nodes) if f"Node {j+1}" != from_node], key=f"pump_to_{i}")
             pump_head = st.number_input(f"Design Head (m)", value=50.0, key=f"pump_head_{i}")
             pump_flow = st.number_input(f"Design Flow (m³/s)", value=0.15, key=f"pump_flow_{i}")
             
