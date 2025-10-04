@@ -325,6 +325,7 @@ def main():
     
     # Tool selection with buttons
     tools = [
+        "🤖 AI Assistant",
         "🏗️ Force Main Designer",
         "📊 Friction Loss Calculator", 
         "🔗 Network Analyzer",
@@ -333,7 +334,6 @@ def main():
         "📈 Results Visualizer",
         "⚖️ EPANET vs SWMM5 Comparison",
         "🔧 Troubleshooting Assistant",
-        "🤖 AI Assistant",
         "💻 Source Code"
     ]
     

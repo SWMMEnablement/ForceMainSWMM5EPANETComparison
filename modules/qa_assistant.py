@@ -56,8 +56,42 @@ You help users with questions about:
 - The app uses both Hazen-Williams and Darcy-Weisbach equations
 - Network analysis uses Hardy Cross method with Newton-Raphson iteration
 
-Provide clear, accurate answers. Reference specific app features when relevant. 
-If asked about how to do something, guide users to the appropriate tool in the app."""
+## SOURCE CODE REFERENCE
+
+**Module: calculator.py** - ForceMainCalculator class
+- hazen_williams_loss(Q, D, L, C): hf = 10.67 * Q^1.852 * L / (C^1.852 * D^4.87)
+- darcy_weisbach_loss(Q, D, L, e): Uses Swamee-Jain friction factor
+- calculate_velocity(Q, D), calculate_reynolds_number(V, D)
+- Properties: gravity=9.81, kinematic_viscosity=1.004e-6
+
+**Module: network.py** - ForceMainNetwork class (Hardy Cross/Newton-Raphson)
+- add_wet_well, add_junction, add_outfall, add_force_main, add_pump
+- solve_network(): Returns (converged, iterations, results)
+- Tolerance=0.001, max_iterations=100
+
+**Module: swmm_writer.py** - SWMMInputGenerator
+- create_force_main_system(config): Generates complete SWMM5 .inp file
+- CRITICAL: XSECTIONS Geom2 uses HW C (auto-converts if roughness < 1 to 120)
+- CRITICAL: Surcharge depth minimum 100 for force main nodes
+- OPTIONS: DYNWAVE routing, H-W equation, SLOT surcharge method
+
+**Module: epanet_writer.py** - EPANETInputGenerator  
+- create_force_main_system(config): Wet well as TANK, force main as PIPE
+- Minor losses: entrance 0.5 + exit 1.0 = 1.5
+- OPTIONS: H-W headloss, SI units, 40 trials
+
+**Module: validator.py** - ModelConsistencyChecker & TroubleshootingAssistant
+- check_physical_parameters, check_pump_curves, check_boundary_conditions
+- check_force_main_full_flow(d/D ≥ 0.95), check_velocity_range(0.6-3.0 m/s)
+- check_pressure_adequacy(> 3.0 m), check_pump_operating_point
+
+**Module: visualizer.py** - HydraulicVisualizer
+- plot_hydraulic_profile, plot_pump_system_curves, plot_velocity_profile
+- plot_pressure_analysis, plot_network_schematic
+- Uses Plotly for interactive visualizations
+
+Provide clear, accurate answers. Reference specific classes, methods, and code when asked about implementation. 
+If asked how code works, explain from the actual source. Guide users to appropriate tools."""
 
     def ask_question(self, question: str, conversation_history: list | None = None) -> str:
         """
