@@ -333,6 +333,7 @@ def main():
         "📈 Results Visualizer",
         "⚖️ EPANET vs SWMM5 Comparison",
         "🔧 Troubleshooting Assistant",
+        "🤖 AI Assistant",
         "💻 Source Code"
     ]
     
@@ -359,6 +360,7 @@ def main():
         "📈 Results Visualizer": "Visualize and analyze simulation results with interactive plots and charts",
         "⚖️ EPANET vs SWMM5 Comparison": "Compare modeling approaches and results between SWMM5 and EPANET",
         "🔧 Troubleshooting Assistant": "Diagnose and resolve common force main modeling issues",
+        "🤖 AI Assistant": "Ask questions about SWMM5, EPANET, and how to use this app",
         "💻 Source Code": "Explore the application's architecture, file structure, and implementation details"
     }
     
@@ -413,6 +415,9 @@ def main():
         epanet_swmm_comparison()
     elif page == "🔧 Troubleshooting Assistant":
         troubleshooting_assistant()
+    elif page == "🤖 AI Assistant":
+        from modules.qa_assistant_ui import ai_assistant
+        ai_assistant()
     elif page == "💻 Source Code":
         source_code_explorer()
 
