@@ -91,7 +91,11 @@ If asked about how to do something, guide users to the appropriate tool in the a
             return response.choices[0].message.content
             
         except Exception as e:
-            return f"Sorry, I encountered an error: {str(e)}"
+            error_msg = str(e)
+            if "429" in error_msg or "insufficient_quota" in error_msg.lower():
+                return "⚠️ **OpenAI API Quota Exceeded**\n\nThe AI Assistant has reached its usage limit. This happens when:\n- Your OpenAI account has insufficient credits\n- You've exceeded your plan's rate limits\n\n**To resolve this:**\n1. Check your OpenAI account billing at https://platform.openai.com/account/billing\n2. Add credits or upgrade your plan\n3. Wait a few minutes if you've hit rate limits\n\nIn the meantime, you can still use all other features of this app!"
+            else:
+                return f"Sorry, I encountered an error: {error_msg}"
     
     def ask_question_stream(self, question: str, conversation_history: list | None = None):
         """
@@ -128,4 +132,8 @@ If asked about how to do something, guide users to the appropriate tool in the a
                     yield chunk.choices[0].delta.content
                     
         except Exception as e:
-            yield f"Sorry, I encountered an error: {str(e)}"
+            error_msg = str(e)
+            if "429" in error_msg or "insufficient_quota" in error_msg.lower():
+                yield "⚠️ **OpenAI API Quota Exceeded**\n\nThe AI Assistant has reached its usage limit. This happens when:\n- Your OpenAI account has insufficient credits\n- You've exceeded your plan's rate limits\n\n**To resolve this:**\n1. Check your OpenAI account billing at https://platform.openai.com/account/billing\n2. Add credits or upgrade your plan\n3. Wait a few minutes if you've hit rate limits\n\nIn the meantime, you can still use all other features of this app!"
+            else:
+                yield f"Sorry, I encountered an error: {error_msg}"
